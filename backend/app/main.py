@@ -1,5 +1,8 @@
-from fastapi import FastAPI
+import os
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from app.database import engine, Base
 
 import app.models # Ensure models are loaded before create_all
@@ -7,10 +10,12 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="iSQL API", version="1.0.0")
 
-# Cho phép Frontend Vite gọi API (CORS)
+# Set additional browser origins as a comma-separated list in deployment.
+local_origins = ["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"]
+configured_origins = [origin.strip().rstrip("/") for origin in os.getenv("CORS_ORIGINS", "").split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"],
+    allow_origins=list(dict.fromkeys(local_origins + configured_origins)),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -19,6 +24,15 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"message": "Welcome to iSQL API Backend!"}
+
+@app.get("/healthz", include_in_schema=False)
+def healthcheck():
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    return {"status": "ok", "revision": os.getenv("APP_REVISION", "local")}
 
 from app.routers import auth, dashboard, problems, submissions, preferences, notifications, ai, admin_classes, classes, assignments, student_assignments
 

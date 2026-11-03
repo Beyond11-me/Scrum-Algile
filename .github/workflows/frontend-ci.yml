@@ -1,0 +1,57 @@
+name: Frontend CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [production]
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      api_url:
+        value: ${{ jobs.checks.outputs.api_url }}
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Frontend checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      api_url: ${{ steps.config.outputs.api_url }}
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Validate production build configuration
+        id: config
+        env:
+          API_URL: ${{ vars.VITE_API_URL }}
+          DEPLOY_ENABLED: ${{ vars.ENABLE_AZURE_DEPLOYMENT }}
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/heads/production && "$GITHUB_EVENT_NAME" != pull_request && "$DEPLOY_ENABLED" == true ]]; then
+            [[ "$API_URL" =~ ^https://[^/]+$ ]] || { echo 'Set repository variable VITE_API_URL to the HTTPS API origin without a trailing slash.'; exit 1; }
+          fi
+          echo "api_url=$API_URL" >> "$GITHUB_OUTPUT"
+      - run: npm ci
+      - run: npm test
+      - name: Build frontend
+        env:
+          VITE_API_URL: ${{ steps.config.outputs.api_url }}
+        run: npm run build
+      - name: Save production frontend
+        if: github.ref == 'refs/heads/production' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          if-no-files-found: error
+          retention-days: 7
