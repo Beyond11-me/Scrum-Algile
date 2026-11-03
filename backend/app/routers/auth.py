@@ -1,15 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from app.database import get_db
+from app.db.session import get_db
+from app.dependencies.auth import get_current_user
 from app.models import User
 from app.schemas import UserCreate, LoginRequest, UserResponse, TokenWithUser, LecturerRegisterRequest
-from app.security import verify_password, get_password_hash, create_access_token, decode_access_token
+from app.core.security import verify_password, get_password_hash, create_access_token
+from app.services.rbac import assign_user_role
 import uuid
 
 router = APIRouter()
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
 @router.post("/token")
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -20,21 +20,6 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
         raise HTTPException(status_code=403, detail="Tài khoản của bạn đã bị vô hiệu hóa.")
     token = create_access_token(data={"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
-
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    payload = decode_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    
-    email = payload.get("sub")
-    if email is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
-        
-    user = db.query(User).filter(User.email == email).first()
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-        
-    return user
 
 @router.post("/register", response_model=TokenWithUser)
 def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -55,6 +40,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         status="Active"
     )
     db.add(new_user)
+    assign_user_role(db, new_user, "student")
     db.commit()
     db.refresh(new_user)
     
@@ -81,6 +67,7 @@ def register_lecturer(user: LecturerRegisterRequest, db: Session = Depends(get_d
         department=user.department
     )
     db.add(new_user)
+    assign_user_role(db, new_user, "instructor")
     db.commit()
     
     return {"message": "Registration successful."}

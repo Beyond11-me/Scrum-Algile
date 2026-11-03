@@ -4,8 +4,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import json
 from passlib.context import CryptContext
-from app.database import SessionLocal, engine, Base
+from app.db.session import SessionLocal, engine, Base
 from app.models import User, Problem, Submission
+from app.services.rbac import assign_user_role, seed_rbac_catalogue
 import uuid
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -15,6 +16,7 @@ def get_password_hash(password):
 
 def seed_data():
     db = SessionLocal()
+    seed_rbac_catalogue(db)
     
     # 1. Tạo User mẫu
     demo_user = db.query(User).filter(User.email == "student@demo.local").first()
@@ -28,7 +30,10 @@ def seed_data():
             role="student"
         )
         db.add(demo_user)
+        assign_user_role(db, demo_user, "student")
         print("Đã tạo User: student@demo.local")
+    else:
+        assign_user_role(db, demo_user, "student")
 
     # 1.5 Tạo Instructor mẫu
     instructor_user = db.query(User).filter(User.email == "instructor@demo.local").first()
@@ -42,7 +47,10 @@ def seed_data():
             role="instructor"
         )
         db.add(instructor_user)
+        assign_user_role(db, instructor_user, "instructor")
         print("Đã tạo User: instructor@demo.local")
+    else:
+        assign_user_role(db, instructor_user, "instructor")
 
     # 1.6 Tạo Admin mẫu
     admin_user = db.query(User).filter(User.email == "admin@demo.local").first()
@@ -56,7 +64,10 @@ def seed_data():
             role="admin"
         )
         db.add(admin_user)
+        assign_user_role(db, admin_user, "admin")
         print("Đã tạo User: admin@demo.local")
+    else:
+        assign_user_role(db, admin_user, "admin")
 
     db.commit()
     db.close()

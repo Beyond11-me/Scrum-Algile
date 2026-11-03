@@ -4,15 +4,22 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.database import SessionLocal
+from app.db.session import Base, SessionLocal, engine
 from app.models import User, Class
+from app.services.rbac import seed_rbac_catalogue
 from app.routers.admin_classes import create_class, ClassCreatePayload
 from app.routers.admin_users import create_admin_user, AdminUserCreate
 from app.routers.admin_overview import get_overview_stats
 
 class TestAdminFeatures(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        Base.metadata.create_all(bind=engine)
+
     def setUp(self):
         self.db = SessionLocal()
+        seed_rbac_catalogue(self.db)
+        self.db.commit()
         self.admin = self.db.query(User).filter(User.role == "admin").first()
         if not self.admin:
             self.admin = User(

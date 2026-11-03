@@ -2,6 +2,23 @@
 
 This is the backend for the SQL-UIT application, built with [FastAPI](https://fastapi.tiangolo.com/).
 
+## Project Structure
+
+```text
+app/core/          # configuration and security helpers
+app/db/            # SQLAlchemy engine, session and Base
+app/dependencies/  # shared FastAPI dependencies
+app/routers/       # API controllers
+app/services/      # reusable business logic
+migrations/        # explicit database upgrades
+scripts/           # local setup and seed commands
+tests/             # automated tests
+```
+
+`app.database` and `app.security` remain available for existing code. New code
+should use `app.db.session` and `app.core.security`. See
+[`docs/architecture.md`](docs/architecture.md) for the dependency boundaries.
+
 ## Prerequisites
 
 Before you begin, ensure you have the following installed on your machine:
@@ -87,6 +104,16 @@ Run the seed script. This will automatically create all necessary tables and ins
 ```bash
 python scripts/seed.py
 ```
+
+**Upgrade an existing database to RBAC:**
+
+```bash
+python -m migrations.rbac_v1
+```
+
+Run this command before starting a version that uses `users.role_id`. It creates
+the RBAC tables and safely maps the existing `users.role` values. Details are in
+[`migrations/README.md`](migrations/README.md).
 
 _This will create two demo accounts you can use to log in:_
 

@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional, Any, Dict
-from app.database import get_db
+from app.db.session import get_db
 from app.models import User, Submission, Problem, TestCase, Notification
 from app.schemas import SubmissionResponse, TeacherSubmissionResponse
-from app.routers.auth import get_current_user
+from app.dependencies.auth import get_current_user
 from pydantic import BaseModel
 import uuid
 
