@@ -57,7 +57,7 @@ jobs:
           [[ "$API_URL" =~ ^https://[^/]+$ ]] || { echo 'VITE_API_URL must be the HTTPS API origin without a trailing slash.'; exit 1; }
           head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/production" --jq '.object.sha')
           [[ "$GITHUB_SHA" == "$head" ]] || { echo 'Refusing to publish an outdated production run.'; exit 1; }
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: backend-image
       - uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
