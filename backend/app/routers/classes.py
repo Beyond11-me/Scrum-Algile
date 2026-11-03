@@ -4,9 +4,9 @@ from typing import List
 from datetime import datetime
 import uuid
 
-from app.database import SessionLocal
+from app.db.session import SessionLocal
 from app import models, schemas
-from app.routers.auth import get_current_user
+from app.dependencies.auth import get_current_user
 
 router = APIRouter()
 

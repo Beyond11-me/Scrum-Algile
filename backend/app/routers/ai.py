@@ -5,8 +5,8 @@ from google import genai
 from google.genai import types
 from app.schemas import AiChatRequest, AiChatResponse, AiChatSessionSchema, AiChatMessageSchema
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.routers.auth import get_current_user
+from app.db.session import get_db
+from app.dependencies.auth import get_current_user
 from app.models import User, AiChatSession, AiChatMessage
 from typing import List
 

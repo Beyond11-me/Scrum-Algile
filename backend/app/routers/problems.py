@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
-from app.database import get_db
+from app.db.session import get_db
 from app.models import User, Problem, Submission, TestCase, TestCaseScript, Topic, ProblemTopic, ProblemDraft, Favorite, ProblemListItem, AiChatSession, AiChatMessage, Notification
 from app.schemas import ProblemListResponse, ProblemDetailResponse, QueryRequest, ProblemCreate, TestCaseCreate, ProblemValidateRequest, TrendingProblem
-from app.routers.auth import get_current_user
+from app.dependencies.auth import get_current_user
 from app.services.sandbox import run_sandbox, run_validate_sandbox
 from sqlalchemy import func, case
 import uuid

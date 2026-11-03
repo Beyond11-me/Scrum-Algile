@@ -7,7 +7,7 @@ from collections import Counter
 
 from sqlalchemy import text
 
-from app.database import SessionLocal
+from app.db.session import SessionLocal
 from app.models import (
     ActivityLog, Assignment, AssignmentClass, AssignmentProblem, Class,
     ClassEnrollment, Problem, Submission, User,

@@ -3,19 +3,26 @@ import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
-from app.database import engine, Base
+from app.core.config import get_settings
+from app.db.session import engine, Base, SessionLocal
 
 import app.models  # Ensure models are loaded before create_all
 Base.metadata.create_all(bind=engine)
 
+# System roles and permissions are reference data.  This remains idempotent so
+# local startup and container restarts do not duplicate records.
+from app.services.rbac import seed_rbac_catalogue
+
+with SessionLocal() as bootstrap_db:
+    seed_rbac_catalogue(bootstrap_db)
+    bootstrap_db.commit()
+
 app = FastAPI(title="iSQL API", version="1.0.0")
 
 # Set additional browser origins as a comma-separated list in deployment.
-local_origins = ["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"]
-configured_origins = [origin.strip().rstrip("/") for origin in os.getenv("CORS_ORIGINS", "").split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=list(dict.fromkeys(local_origins + configured_origins)),
+    allow_origins=list(get_settings().cors_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

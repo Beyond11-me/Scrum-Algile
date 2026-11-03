@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
-from app.database import get_db
+from app.db.session import get_db
 from app.models import User, Notification
-from app.routers.auth import get_current_user
+from app.dependencies.auth import get_current_user
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 import datetime
