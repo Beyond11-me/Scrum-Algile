@@ -1,0 +1,82 @@
+name: Deploy to Azure
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        type: string
+        required: true
+      api_url:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Deploy production to Azure
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    concurrency:
+      group: production-deployment
+      cancel-in-progress: false
+    env:
+      WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+      API_URL: ${{ inputs.api_url }}
+      IMAGE: ${{ inputs.image }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Validate deployment configuration and revision
+        env:
+          SWA_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          AZURE_CLIENT: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in WEBAPP_NAME API_URL IMAGE SWA_TOKEN AZURE_CLIENT AZURE_TENANT AZURE_SUBSCRIPTION; do
+            [[ -n "${!name}" ]] || { echo "Missing deployment setting: $name"; exit 1; }
+          done
+          [[ "$GITHUB_REF" == refs/heads/production ]] || { echo 'Production branch required.'; exit 1; }
+          head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/production" --jq '.object.sha')
+          [[ "$GITHUB_SHA" == "$head" ]] || { echo 'Refusing to deploy an outdated production run. Use a new commit or revert to roll back.'; exit 1; }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy backend container
+        uses: azure/webapps-deploy@02a81bead70021f5284939794bcec79c271ab383 # v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          images: ${{ inputs.image }}
+      - name: Wait for the deployed revision and database
+        shell: bash
+        run: |
+          for attempt in {1..30}; do
+            if response=$(curl --fail --silent --show-error --max-time 10 "$API_URL/healthz") && \
+               [[ $(jq -r '.revision' <<< "$response") == "$GITHUB_SHA" ]] && \
+               [[ $(jq -r '.status' <<< "$response") == ok ]]; then exit 0; fi
+            echo "Waiting for backend revision ($attempt/30)..."
+            sleep 10
+          done
+          echo 'The expected backend revision did not become healthy.'
+          exit 1
+      - name: Deploy checked frontend artifact
+        uses: Azure/static-web-apps-deploy@1a947af9992250f3bc2e68ad0754c0b0c11566c9 # v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: frontend/dist
+          production_branch: production
+          skip_app_build: true
+          output_location: ''
