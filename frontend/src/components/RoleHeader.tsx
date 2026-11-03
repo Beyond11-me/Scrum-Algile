@@ -180,6 +180,7 @@ export function RoleHeader({ role, workspace }: { role: Role; workspace?: Worksp
         </div>}
       </div>
     </div>}
+    <button type="button" className="header-theme-toggle" aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} title={dark ? "Light mode" : "Dark mode"} onClick={() => setTheme(dark ? "light" : "dark")}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
     <div className="role-account" ref={accountRef}>
       <button ref={accountButton} type="button" className="account-trigger" aria-label={`${role} account and appearance`} aria-expanded={accountOpen} aria-controls="role-account-menu" onClick={() => { setAccountOpen(value => !value); setNotificationsOpen(false); setStreakOpen(false); }}>
         <span className="avatar">{session?.initials || "?"}</span><span className="account-identity"><b>{session?.name || "Account"}</b><small>{role === "teacher" ? "Lecturer" : role === "admin" ? "Admin" : "Student"}</small></span>

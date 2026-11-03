@@ -4,6 +4,9 @@
 .role-header nav a { height:100%; display:inline-flex; align-items:center; border-bottom:2px solid transparent; font-size:12px; }
 .role-header nav a.active { border-bottom-color:var(--accent); color:var(--accent); }
 .role-account { position:relative; margin-left:auto; min-width:0; }
+.header-theme-toggle { display:grid; place-items:center; flex:none; width:36px; height:36px; margin-left:auto; padding:0; border:1px solid var(--border); border-radius:var(--radius-full); color:var(--text-secondary); }
+.header-theme-toggle:hover { border-color:var(--accent); color:var(--accent); }
+.header-theme-toggle + .role-account,.role-student .header-theme-toggle { margin-left:0; }
 .role-account .avatar { width:32px; height:32px; }
 .role-account-menu { position:absolute; top:calc(100% + 16px); right:0; z-index:50; width:210px; padding:10px; border:1px solid var(--border); border-radius:var(--radius-lg); background:var(--surface); box-shadow:0 12px 28px #0f111521; display:grid; gap:3px; }
 .role-account-menu > b,.role-account-menu > small { padding:2px 6px; }
@@ -287,14 +290,14 @@
 
 /* iSQL identity, shared by student, lecturer, and admin screens. */
 .role-header {
-  box-shadow: 0 1px 10px #1719420a;
+  box-shadow: 0 1px 10px #0b1a3d0a;
 }
 .role-header::before {
   content: "";
   position: absolute;
   inset: 0 0 auto;
   height: 3px;
-  background: linear-gradient(90deg, var(--brand-primary) 0%, #7168dc 76%, var(--brand-mint) 100%);
+  background: linear-gradient(90deg, var(--brand-primary) 0%, #3b82f6 76%, var(--brand-mint) 100%);
   pointer-events: none;
 }
 .role-header .brand-name {
@@ -318,11 +321,11 @@
   isolation: isolate;
   overflow: hidden;
   color: #f8f9ff;
-  border-right-color: #403b83;
+  border-right-color: #1e3a8a;
   background:
     radial-gradient(circle at 88% 14%, #a6ffe929 0, transparent 31%),
-    radial-gradient(circle at 14% 86%, #8276ee66 0, transparent 36%),
-    linear-gradient(150deg, var(--brand-night) 0%, #292663 58%, var(--brand-primary) 100%);
+    radial-gradient(circle at 14% 86%, #4f8bff66 0, transparent 36%),
+    linear-gradient(150deg, var(--brand-night) 0%, #13306b 58%, var(--brand-primary) 100%);
 }
 .auth-brand-panel::before {
   content: "";
@@ -344,7 +347,7 @@
 .auth-wordmark img {
   width: 40px;
   height: 40px;
-  filter: drop-shadow(0 4px 14px #0a0c3070);
+  filter: drop-shadow(0 4px 14px #08143370);
 }
 .auth-eyebrow {
   display: inline-flex;
@@ -377,23 +380,23 @@
 .auth-pitch p {
   max-width: 440px;
   margin-top: 18px;
-  color: #d8dcfa;
+  color: #d6e2fb;
   font-size: 13px;
   line-height: 1.7;
 }
 .auth-brand-panel > small {
-  color: #d2d7f7;
+  color: #cfdcf5;
 }
 .auth-brand-panel .editor-preview {
   color: #f4f6ff;
-  background: #151a3a;
-  border-color: #7275ae;
+  background: #0f1a36;
+  border-color: #5b7bb8;
   border-radius: 12px;
-  box-shadow: 0 22px 55px #0b0d3280;
+  box-shadow: 0 22px 55px #08143380;
 }
 .auth-brand-panel .preview-bar {
-  background: #202650;
-  border-bottom-color: #495285;
+  background: #16264d;
+  border-bottom-color: #3a5a96;
 }
 .auth-brand-panel .preview-bar span,
 .auth-brand-panel .editor-preview pre strong,
@@ -402,11 +405,11 @@
 }
 .auth-brand-panel .editor-preview pre i,
 .auth-brand-panel .editor-preview pre em {
-  color: #aeb7dc;
+  color: #a9bde0;
 }
 .auth-brand-panel .preview-result {
-  background: #111731;
-  border-top-color: #495285;
+  background: #0d1630;
+  border-top-color: #3a5a96;
 }
 
 .auth-form-panel {
@@ -438,13 +441,13 @@
 }
 .auth-form-wrap .button.primary {
   min-height: 44px;
-  box-shadow: 0 7px 18px #4f46c829;
+  box-shadow: 0 7px 18px #155aef29;
 }
 
 @media (max-width: 980px) {
   .auth-brand-panel {
     border-right: 0;
-    border-bottom-color: #403b83;
+    border-bottom-color: #1e3a8a;
   }
   .auth-eyebrow {
     margin-bottom: 10px;

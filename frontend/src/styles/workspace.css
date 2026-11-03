@@ -13,12 +13,13 @@
   --submit-text: #ffffff;
 }
 :root[data-theme="dark"] {
-  --editor-bg: #0b0d1a;
-  --editor-toolbar-border: #22273d;
-  --editor-control: #161a2c;
-  --editor-control-border: #2a3049;
-  --editor-active-line: #121629;
-  --submit-bg: #1f9a5e;
+  --editor-bg: #18181b;
+  --editor-toolbar-border: #2c2c31;
+  --editor-control: #222225;
+  --editor-control-border: #3a3a40;
+  --editor-active-line: #1f1f23;
+  --submit-bg: #17b26a;
+  --submit-text: #0b1f15;
 }
 
 /* Header: list link + previous / next problem */
