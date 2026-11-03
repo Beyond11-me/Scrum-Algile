@@ -162,16 +162,3 @@ To run the backend and frontend directly on your machine (without Docker):
 
 Publishing and deployment are disabled until `ENABLE_AZURE_DEPLOYMENT` is turned on. GitHub Actions authenticates to Azure via OIDC. See [docs/azure-ci-cd.md](docs/azure-ci-cd.md) for the full setup.
 
-## 9. Team Members
-
-| # | Name | Scrum Role |
-| --- | --- | --- |
-| 1 | Bành Xuân Phúc | Product Owner |
-| 2 | Nguyễn Thành Đức | Scrum Master |
-| 3 | Sơn Nguyễn Kỳ Duyên | Developer |
-| 4 | Nguyễn Mai Kỳ | Developer |
-| 5 | Lê Minh Thắng | Developer |
-| 6 | Lai Mộc Huy | Developer |
-| 7 | Trần Huỳnh Gia Khang | Developer |
-| 8 | Phan Vĩnh Hoàng | Developer |
-| 9 | Phan Thế Hiển | Developer |
