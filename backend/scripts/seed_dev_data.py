@@ -10,13 +10,14 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import text
 
-from app.database import SessionLocal
+from app.db.session import SessionLocal
 from app.models import (
     ActivityLog, Assignment, AssignmentClass, AssignmentProblem, Class,
     ClassEnrollment, Problem, ProblemTopic, Submission, TestCase,
     TestCaseScript, Topic, User,
 )
-from app.security import get_password_hash
+from app.core.security import get_password_hash
+from app.services.rbac import assign_legacy_user_roles, seed_rbac_catalogue
 
 
 CUSTOMER_SCHEMA = "CREATE TABLE Customers (customer_id INT, customer_name VARCHAR(80), city VARCHAR(40) NULL);"
@@ -119,6 +120,8 @@ def seed():
     db = SessionLocal()
     counts = {name: [0, 0] for name in ("users", "classes", "problems", "assignments", "contests", "submissions", "activity_logs")}
     try:
+        roles = seed_rbac_catalogue(db)
+        assign_legacy_user_roles(db, roles)
         database, server = db.execute(text("SELECT DB_NAME(), @@SERVERNAME")).one()
         if database.upper() != "SQLUIT" or "LOCALDB" not in server.upper():
             raise RuntimeError(f"Refusing to seed non-local SQLUIT database: {database} on {server}")
@@ -146,6 +149,7 @@ def seed():
                                         f"Demo Student {index:02d}", "student", "Active", counts))
         ensure_user(db, "pending.lecturer@demo.local", "dev-pending-lecturer", "Demo Pending Lecturer", "instructor", "Pending", counts)
         ensure_user(db, "inactive.student@demo.local", "dev-inactive-student", "Demo Inactive Student", "student", "Inactive", counts)
+        assign_legacy_user_roles(db, roles)
         db.flush()
 
         term = "Semester 1, 2026"

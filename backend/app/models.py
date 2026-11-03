@@ -2,10 +2,45 @@ from sqlalchemy import Column, String, Unicode, Integer, Float, ForeignKey, Text
 from sqlalchemy.orm import relationship
 import datetime
 import uuid
-from app.database import Base
+from app.db.session import Base
 
 def generate_uuid():
     return str(uuid.uuid4())
+
+class Role(Base):
+    __tablename__ = "roles"
+
+    id = Column(Unicode(50), primary_key=True, default=generate_uuid)
+    code = Column(Unicode(50), unique=True, index=True, nullable=False)
+    name = Column(Unicode(100), nullable=False)
+    description = Column(UnicodeText, nullable=True)
+    is_system = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+
+    users = relationship("User", back_populates="role_entity")
+    permissions = relationship("Permission", secondary="role_permissions", back_populates="roles", lazy="selectin")
+
+
+class Permission(Base):
+    __tablename__ = "permissions"
+
+    id = Column(Unicode(50), primary_key=True, default=generate_uuid)
+    code = Column(Unicode(100), unique=True, index=True, nullable=False)
+    name = Column(Unicode(150), nullable=False)
+    description = Column(UnicodeText, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    roles = relationship("Role", secondary="role_permissions", back_populates="permissions")
+
+
+class RolePermission(Base):
+    __tablename__ = "role_permissions"
+
+    role_id = Column(Unicode(50), ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True)
+    permission_id = Column(Unicode(50), ForeignKey("permissions.id", ondelete="CASCADE"), primary_key=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
 
 class User(Base):
     __tablename__ = "users"
@@ -15,7 +50,9 @@ class User(Base):
     hashed_password = Column(Unicode(255), nullable=False)
     name = Column(Unicode(255), nullable=False)
     initials = Column(Unicode(10), nullable=False)
+    # Kept while routers and frontend migrate to the normalised role relation.
     role = Column(Unicode(50), default="student")  # student, instructor, admin
+    role_id = Column(Unicode(50), ForeignKey("roles.id"), nullable=True, index=True)
     status = Column(Unicode(50), default="Active") # Active, Inactive, Pending
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     last_active = Column(DateTime, default=datetime.datetime.utcnow)
@@ -23,6 +60,8 @@ class User(Base):
     current_streak = Column(Integer, default=0)
     longest_streak = Column(Integer, default=0)
     last_streak_date = Column(DateTime, nullable=True)
+
+    role_entity = relationship("Role", back_populates="users", lazy="selectin")
 
 class Notification(Base):
     __tablename__ = "notifications"

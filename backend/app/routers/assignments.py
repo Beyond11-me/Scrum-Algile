@@ -10,8 +10,8 @@ import math
 from pathlib import Path
 import re
 
-from app.database import get_db
-from app.routers.auth import get_current_user
+from app.db.session import get_db
+from app.dependencies.auth import get_current_user
 from app.models import User, Assignment, AssignmentClass, AssignmentProblem, Class, ClassEnrollment
 from app.schemas import AssignmentCreate, AssignmentResponse
 

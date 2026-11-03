@@ -3,10 +3,11 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
-from app.database import get_db
+from app.db.session import get_db
 from app.models import User, ActivityLog
-from app.routers.auth import get_current_user
-from app.security import get_password_hash
+from app.dependencies.auth import get_current_user
+from app.core.security import get_password_hash
+from app.services.rbac import assign_user_role
 
 router = APIRouter()
 
@@ -114,6 +115,7 @@ def create_admin_user(
         department=""
     )
     db.add(new_user)
+    assign_user_role(db, new_user, db_role)
     
     log = ActivityLog(
         user_id=admin_user.id,
@@ -158,7 +160,7 @@ def update_admin_user(
     user.name = user_update.name.strip()
     user.status = user_update.status
     previous_role = user.role
-    user.role = normalize_role_to_db(user_update.role)
+    assign_user_role(db, user, user_update.role)
 
     if previous_role != user.role:
         db.add(ActivityLog(user_id=admin_user.id, action=f"Changed role of {user.email} from {previous_role} to {user.role}"))
