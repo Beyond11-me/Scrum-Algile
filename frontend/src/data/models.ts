@@ -1,4 +1,4 @@
-export const APP_NAME = "UIT-SQL";
+export const APP_NAME = "iSQL";
 
 export type Progress = "Solved" | "In progress" | "Not started";
 export type Verdict =

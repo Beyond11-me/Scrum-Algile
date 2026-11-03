@@ -7,10 +7,11 @@ import { APP_NAME } from "../data/models";
 import { studentApi } from "../services/studentApi";
 import { useLoad } from "./useLoad";
 
-type Role = "student" | "teacher";
+type Role = "student" | "teacher" | "admin";
 const links: Record<Role, [string, string][]> = {
   student: [["Assignments", "/assignments"], ["Submissions", "/submissions"]],
   teacher: [["Problems", "/teacher/problems"], ["Assignments", "/teacher/assignments"], ["Classes", "/teacher/classes"], ["Results", "/teacher/results"]],
+  admin: [["Classes", "/admin/classes"]],
 };
 
 export function RoleHeader({ role, workspace }: { role: Role; workspace?: { title: string; number: string; topic: string; source?: string; context?: string; backTo?: string } }) {
@@ -178,7 +179,7 @@ export function RoleHeader({ role, workspace }: { role: Role; workspace?: { titl
     </div>}
     <div className="role-account" ref={accountRef}>
       <button ref={accountButton} type="button" className="account-trigger" aria-label={`${role} account and appearance`} aria-expanded={accountOpen} aria-controls="role-account-menu" onClick={() => { setAccountOpen(value => !value); setNotificationsOpen(false); setStreakOpen(false); }}>
-        <span className="avatar">{session?.initials || "?"}</span><span className="account-identity"><b>{session?.name || "Account"}</b><small>{role === "teacher" ? "Lecturer" : "Student"}</small></span>
+        <span className="avatar">{session?.initials || "?"}</span><span className="account-identity"><b>{session?.name || "Account"}</b><small>{role === "teacher" ? "Lecturer" : role === "admin" ? "Admin" : "Student"}</small></span>
       </button>
       {accountOpen && <div id="role-account-menu" className="role-account-menu" role="region" aria-label="Account settings">
         <b>{session?.name || "Account"}</b><small className="muted">Appearance</small>

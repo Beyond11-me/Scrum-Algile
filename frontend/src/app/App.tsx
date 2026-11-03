@@ -4,7 +4,9 @@ import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { AppHeader } from "../components/AppHeader";
 import { TeacherHeader } from "../components/TeacherHeader";
+import { AdminHeader } from "../components/AdminHeader";
 import {
+  AdminRoute,
   ProtectedRoute,
   PublicOnlyRoute,
   TeacherRoute,
@@ -27,6 +29,7 @@ import { ProblemLibraryPage, AssignmentsListPage } from "../pages/teacher/Teache
 import { AssignmentBuilderPage } from "../pages/teacher/BuilderPages";
 import { ClassesPage } from "../pages/teacher/ClassesPage";
 import { ManualReviewPage, ResultsDashboardPage } from "../pages/teacher/ResultsPages";
+import { AdminClassesPage } from "../pages/admin/AdminClassesPage";
 
 const WorkspacePage = lazy(() =>
   import("../pages/student/WorkspacePage").then((module) => ({
@@ -56,9 +59,24 @@ function TeacherShell() {
   );
 }
 
+function AdminShell() {
+  return (
+    <>
+      <AdminHeader />
+      <main id="main-content" className="admin-main">
+        <RouteContent />
+      </main>
+    </>
+  );
+}
+
 function RouteContent() {
   const { pathname } = useLocation();
-  return <div className="route-content" key={pathname}><Outlet /></div>;
+  return (
+    <div className="route-content" key={pathname}>
+      <Outlet />
+    </div>
+  );
 }
 
 export function App() {
@@ -66,7 +84,12 @@ export function App() {
     document.title = APP_NAME;
   }, []);
   const { session } = useAuth();
-  const home = session?.role === "instructor" ? "/teacher/problems" : "/assignments";
+  const home =
+    session?.role === "admin"
+      ? "/admin/classes"
+      : session?.role === "instructor"
+      ? "/teacher/problems"
+      : "/assignments";
 
   return (
     <>
@@ -124,6 +147,13 @@ export function App() {
             <Route path="results" element={<ResultsDashboardPage />} />
             <Route path="results/review/:submissionId" element={<ManualReviewPage />} />
             <Route path="*" element={<Navigate replace to="problems" />} />
+          </Route>
+        </Route>
+        <Route element={<AdminRoute />}>
+          <Route path="/admin" element={<AdminShell />}>
+            <Route index element={<Navigate replace to="classes" />} />
+            <Route path="classes" element={<AdminClassesPage />} />
+            <Route path="*" element={<Navigate replace to="classes" />} />
           </Route>
         </Route>
         <Route

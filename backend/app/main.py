@@ -5,7 +5,7 @@ from app.database import engine, Base
 import app.models # Ensure models are loaded before create_all
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="UIT-SQL API", version="1.0.0")
+app = FastAPI(title="iSQL API", version="1.0.0")
 
 # Cho phép Frontend Vite gọi API (CORS)
 app.add_middleware(
@@ -18,12 +18,16 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to SQL-UIT API Backend!"}
+    return {"message": "Welcome to iSQL API Backend!"}
 
-from app.routers import auth, dashboard, problems, submissions, preferences, notifications, ai
+from app.routers import auth, dashboard, problems, submissions, preferences, notifications, ai, admin_classes, classes, assignments, student_assignments
 
 # Import routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
+app.include_router(admin_classes.router, prefix="/api/admin/classes", tags=["Admin Classes"])
+app.include_router(classes.router, prefix="/api/teacher/classes", tags=["Teacher Classes"])
+app.include_router(assignments.router)
+app.include_router(student_assignments.router, prefix="/api/student/assignments", tags=["Student Assignments"])
 app.include_router(problems.router, prefix="/api/problems", tags=["Problems"])
 app.include_router(submissions.router, prefix="/api/submissions", tags=["Submissions"])
 app.include_router(dashboard.router, prefix="/api/student/dashboard", tags=["Dashboard"])

@@ -83,7 +83,7 @@ function AuthLayout({
       <section className="auth-brand-panel" aria-label={`${APP_NAME} introduction`}>
         <div className="auth-wordmark"><img src="/favicon.svg" width="32" height="32" alt="" /><b>{APP_NAME}</b></div>
         <div className="auth-pitch">
-          <div className="auth-pitch-copy"><span className="auth-eyebrow">SQL PRACTICE AT UIT</span><h2>Write queries.<br /><span>Understand data.</span></h2><p>Practice on real schemas, see the result of every query, and build your SQL skills one problem at a time.</p></div>
+          <div className="auth-pitch-copy"><span className="auth-eyebrow">iSQL PRACTICE PLATFORM</span><h2>Write queries.<br /><span>Understand data.</span></h2><p>Practice on real schemas, see the result of every query, and build your SQL skills one problem at a time.</p></div>
           <div className="editor-preview" aria-label="SQL editor preview">
             <div className="preview-bar"><b>join-orders.sql</b><span>Run</span></div>
             <pre><code><i>1</i>  <em>-- Orders per customer</em>{"\n"}<i>2</i>  <strong>SELECT</strong> c.name, COUNT(o.id) <strong>AS</strong> orders{"\n"}<i>3</i>  <strong>FROM</strong> customers c{"\n"}<i>4</i>  <strong>LEFT JOIN</strong> orders o <strong>ON</strong> o.customer_id = c.id{"\n"}<i>5</i>  <strong>GROUP BY</strong> c.name{"\n"}<i>6</i>  <strong>ORDER BY</strong> orders <strong>DESC</strong>;</code></pre>
