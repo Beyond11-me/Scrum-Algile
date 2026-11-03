@@ -1,0 +1,32 @@
+import { storage } from "./storage";
+
+export async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = storage.get("sql-practice:access-token");
+  
+  const headers: Record<string, string> = {
+    ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+    ...((options.headers as any) || {}),
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const baseUrl = import.meta.env.VITE_API_URL || "";
+  const fullUrl = endpoint.startsWith("http") ? endpoint : `${baseUrl}${endpoint}`;
+
+  const response = await fetch(fullUrl, {
+    ...options,
+    headers,
+  });
+
+  const isJson = response.headers.get("content-type")?.includes("application/json");
+  const data = isJson ? await response.json() : await response.text();
+
+  if (!response.ok) {
+    const errorMsg = typeof data === "string" ? data : data?.detail || "The server could not complete the request.";
+    throw new Error(errorMsg);
+  }
+
+  return data as T;
+}

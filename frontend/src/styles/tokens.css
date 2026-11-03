@@ -1,0 +1,155 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap");
+
+:root {
+  color-scheme: light;
+  --student-sidebar-width: 320px;
+
+  /* Semantic Color Tokens (Light) */
+  --canvas: #f7f7fc;
+  --surface: #ffffff;
+  --subtle: #f0f1f9;
+  --text-primary: #171831;
+  --text: var(--text-primary);
+  --text-secondary: #626981;
+  --muted: var(--text-secondary);
+  --border-default: #dce0ed;
+  --border: var(--border-default);
+  --border-subtle: #eceefa;
+  --brand-primary: #4f46c8;
+  --accent: var(--brand-primary);
+  --accent-subtle: #efedff;
+  --on-accent: #ffffff;
+  --brand-mint: #a6ffe9;
+  --brand-night: #171942;
+  --success: #1f883d;
+  --warning: #9a6700;
+  --danger: #cf222e;
+
+  /* State & Feature Colors */
+  --scrollbar-thumb: #7269d9;
+  --scrollbar-track: #eaeaf6;
+  --success-subtle: #daf5df;
+  --warning-subtle: #fff1c2;
+  --danger-subtle: #ffebe9;
+  --selection: #dcd9ff;
+  --backdrop: #0f111580;
+
+  /* Activity Heatmap & Calendar */
+  --heat-0: #eceefa;
+  --heat-1: #dedbfb;
+  --heat-2: #c1baf4;
+  --heat-3: #9188e7;
+  --heat-4: var(--brand-primary);
+  --calendar-0: #eff0f8;
+  --calendar-1: #e7e3fb;
+  --calendar-2: #c9c2f6;
+  --calendar-3: #9289e7;
+  --calendar-4: var(--brand-primary);
+  --calendar-text-0: #667085;
+  --calendar-text-1: #5147be;
+  --calendar-text-2: #30278e;
+  --calendar-text-strong: #ffffff;
+
+  /* Feature Gradients & Marks */
+  --feature-0-start: #171942;
+  --feature-0-end: var(--brand-primary);
+  --feature-1-start: #083f55;
+  --feature-1-end: #078da5;
+  --feature-2-start: #57210a;
+  --feature-2-end: #e86114;
+  --feature-text: #ffffff;
+  --feature-mark: #ffe073;
+
+  /* Typography */
+  --font-mono:
+    "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --font-ui:
+    "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --font-sans:
+    "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --text-base-size: 13px;
+  --text-base-line: 20px;
+  --text-label-size: 12px;
+  --text-label-line: 18px;
+  --text-caption-size: 11px;
+  --text-caption-line: 17px;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Radii */
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-popover: 10px;
+  --radius-full: 999px;
+  --radius-circle: 999px;
+
+  /* Borders */
+  --border-width: 1px;
+  --border-style: solid;
+
+  /* Layout */
+  --header-height: 64px;
+  --content-width: 1200px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Semantic Color Tokens (Dark) */
+  --canvas: #0e1122;
+  --surface: #171b2e;
+  --subtle: #222740;
+  --text-primary: #f2f3ff;
+  --text: var(--text-primary);
+  --text-secondary: #a7aec8;
+  --muted: var(--text-secondary);
+  --border-default: #363d5a;
+  --border: var(--border-default);
+  --border-subtle: #2a3049;
+  --brand-primary: #4f46c8;
+  --accent: #aaa5ff;
+  --accent-subtle: #2b2a54;
+  --on-accent: #14152e;
+  --brand-mint: #a6ffe9;
+  --brand-night: #151735;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+
+  /* State & Feature Colors */
+  --scrollbar-thumb: #aaa5ff;
+  --scrollbar-track: #2a3049;
+  --success-subtle: #173923;
+  --warning-subtle: #403314;
+  --danger-subtle: #432322;
+  --selection: #413c75;
+
+  /* Activity Heatmap & Calendar */
+  --heat-0: #222740;
+  --heat-1: #33345a;
+  --heat-2: #4b4981;
+  --heat-3: #7771bd;
+  --heat-4: #aaa5ff;
+  --calendar-0: #242943;
+  --calendar-1: #33345c;
+  --calendar-2: #4a4881;
+  --calendar-3: #7770bc;
+  --calendar-4: #aaa5ff;
+  --calendar-text-0: #8f98a8;
+  --calendar-text-1: #b8b9ff;
+  --calendar-text-2: #d5d6ff;
+}
+
+@media (max-width: 1100px) {
+  :root {
+    --student-sidebar-width: 280px;
+  }
+}

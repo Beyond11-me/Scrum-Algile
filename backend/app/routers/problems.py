@@ -1,0 +1,404 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from typing import List, Dict, Any, Optional
+from app.database import get_db
+from app.models import User, Problem, Submission, TestCase, TestCaseScript, Topic, ProblemTopic, ProblemDraft, Favorite, ProblemListItem, AiChatSession, AiChatMessage, Notification
+from app.schemas import ProblemListResponse, ProblemDetailResponse, QueryRequest, ProblemCreate, TestCaseCreate, ProblemValidateRequest, TrendingProblem
+from app.routers.auth import get_current_user
+from app.services.sandbox import run_sandbox, run_validate_sandbox
+from sqlalchemy import func, case
+import uuid
+import datetime
+
+router = APIRouter()
+
+def check_problem_access(db: Session, current_user: User, p: Problem):
+    if p.practice_listed:
+        return True
+    if current_user.role == "instructor":
+        return True
+    return False
+
+@router.get("/trending", response_model=List[TrendingProblem])
+def get_trending(range: str = "Week", db: Session = Depends(get_db)):
+    query = db.query(
+        Submission.problem_id, 
+        Problem.number,
+        Problem.title,
+        func.count(func.distinct(Submission.user_id)).label("learners")
+    ).join(Problem, Problem.id == Submission.problem_id).filter(Problem.practice_listed == True)
+    
+    if range == "Week":
+        start_date = datetime.datetime.utcnow() - datetime.timedelta(days=7)
+        query = query.filter(Submission.submitted_at >= start_date)
+    elif range == "Month": 
+        start_date = datetime.datetime.utcnow() - datetime.timedelta(days=30)
+        query = query.filter(Submission.submitted_at >= start_date)
+        
+    results = query.group_by(
+        Submission.problem_id, 
+        Problem.number, 
+        Problem.title
+    ).order_by(func.count(func.distinct(Submission.user_id)).desc()).limit(5).all()
+    
+    return [TrendingProblem(id=r[0], number=r[1], title=r[2], learners=r[3]) for r in results]
+
+@router.get("", response_model=List[ProblemListResponse])
+def get_problems(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role == "instructor":
+        problems = db.query(Problem).all()
+    else:
+        problems = db.query(Problem).filter(Problem.practice_listed == True).all()
+        
+    # Progress cho current_user
+    subs = db.query(Submission.problem_id, Submission.result).filter(Submission.user_id == current_user.id).all()
+    
+    status_map = {}
+    for problem_id, result in subs:
+        if status_map.get(problem_id) == "Solved":
+            continue
+        if result == "Accepted":
+            status_map[problem_id] = "Solved"
+        else:
+            status_map[problem_id] = "In progress"
+
+    stats_query = db.query(
+        Submission.problem_id,
+        func.count(Submission.id).label("total_subs"),
+        func.count(func.distinct(Submission.user_id)).label("attempted"),
+        func.count(func.distinct(case((Submission.result == 'Accepted', Submission.user_id), else_=None))).label("solved_by"),
+        func.sum(case((Submission.result == 'Accepted', 1), else_=0)).label("accepted_subs")
+    ).group_by(Submission.problem_id).all()
+
+    stats_map = {}
+    for r in stats_query:
+        problem_id, total_subs, attempted, solved_by, accepted_subs = r
+        acceptance = int((accepted_subs / total_subs * 100)) if total_subs > 0 else 0
+        stats_map[problem_id] = {
+            "submissions": total_subs,
+            "attempted": attempted,
+            "solved_by": solved_by,
+            "acceptance": acceptance
+        }
+
+    result_list = []
+    for p in problems:
+        resp = ProblemListResponse.model_validate(p)
+        resp.progress = status_map.get(p.id)
+        
+        p_stats = stats_map.get(p.id, {"submissions": 0, "attempted": 0, "solved_by": 0, "acceptance": 0})
+        resp.submissions = p_stats["submissions"]
+        resp.attempted = p_stats["attempted"]
+        resp.solved_by = p_stats["solved_by"]
+        resp.acceptance = p_stats["acceptance"]
+        
+        result_list.append(resp)
+    
+    return result_list
+
+@router.get("/{problem_id}", response_model=ProblemDetailResponse)
+def get_problem(problem_id: str, context: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    p = db.query(Problem).filter(Problem.id == problem_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Problem not found")
+        
+    if not check_problem_access(db, current_user, p):
+        raise HTTPException(status_code=403, detail="You don't have permission to view this problem.")
+                
+    subs = db.query(Submission.result).filter(
+        Submission.user_id == current_user.id,
+        Submission.problem_id == p.id
+    ).all()
+    
+    progress = None
+    if subs:
+        if any(sub.result == "Accepted" for sub in subs):
+            progress = "Solved"
+        else:
+            progress = "In progress"
+            
+    resp = ProblemDetailResponse.model_validate(p)
+    resp.progress = progress
+    
+    tcs = db.query(TestCase).filter(TestCase.problem_id == p.id).order_by(TestCase.order_index).all()
+    if tcs:
+        mapped_tcs = []
+        for idx, tc in enumerate(tcs):
+            if tc.is_hidden and current_user.role == "student":
+                continue
+            script = db.query(TestCaseScript).filter(TestCaseScript.test_case_id == tc.id).first()
+            if script:
+                mapped_tcs.append({
+                    "schema": script.create_script,
+                    "seedData": script.insert_script,
+                    "isHidden": tc.is_hidden
+                })
+                if idx == 0:
+                    resp.schema_sql = script.create_script
+                    resp.seed_data = script.insert_script
+                    if current_user.role == "instructor":
+                        resp.reference_solution = tc.expected_query or ""
+                    else:
+                        resp.reference_solution = ""
+        resp.test_cases = mapped_tcs
+        
+    return resp
+
+@router.put("/{problem_id}", response_model=ProblemDetailResponse)
+def update_problem(problem_id: str, problem: ProblemCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "instructor":
+        raise HTTPException(status_code=403, detail="Chỉ Giảng viên mới có quyền sửa bài tập.")
+        
+    p = db.query(Problem).filter(Problem.id == problem_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Problem not found")
+        
+    if p.creator_id and p.creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You don't have permission to edit this problem.")
+        
+    topics_list = [t.strip() for t in problem.topics.split(",")] if problem.topics else []
+    
+    p.number = problem.number
+    p.title = problem.title
+    p.topic = problem.topics
+    p.topics = topics_list
+    p.difficulty = problem.difficulty
+    p.practice_listed = (problem.visibility == "Public")
+    p.description = problem.statement
+    p.requirements = problem.requirements
+    p.hint = "\n".join(problem.hints) if problem.hints else None
+    p.database_type = problem.database
+    
+    db.query(ProblemTopic).filter(ProblemTopic.problem_id == problem_id).delete()
+    for t_name in topics_list:
+        if not t_name: continue
+        topic_obj = db.query(Topic).filter(Topic.name == t_name).first()
+        if not topic_obj:
+            topic_obj = Topic(id=str(uuid.uuid4()), name=t_name)
+            db.add(topic_obj)
+            db.commit()
+            db.refresh(topic_obj)
+        pt = ProblemTopic(problem_id=problem_id, topic_id=topic_obj.id)
+        db.add(pt)
+        
+    old_tcs = db.query(TestCase).filter(TestCase.problem_id == problem_id).all()
+    for tc in old_tcs:
+        db.query(TestCaseScript).filter(TestCaseScript.test_case_id == tc.id).delete()
+    db.query(TestCase).filter(TestCase.problem_id == problem_id).delete()
+    
+    test_cases_to_create = problem.test_cases if problem.test_cases else [
+        TestCaseCreate(schema_sql=problem.schema_sql, seed_data=problem.seed_data, is_hidden=False)
+    ]
+    
+    for idx, tc_data in enumerate(test_cases_to_create):
+        tc_id = str(uuid.uuid4())
+        tc = TestCase(
+            id=tc_id,
+            problem_id=problem_id,
+            is_hidden=tc_data.is_hidden,
+            order_index=idx + 1,
+            expected_query=problem.reference_solution
+        )
+        db.add(tc)
+        
+        tcs = TestCaseScript(
+            id=str(uuid.uuid4()),
+            test_case_id=tc_id,
+            table_name="Generated", 
+            create_script=tc_data.schema_sql or problem.schema_sql,
+            insert_script=tc_data.seed_data,
+            is_expected=False
+        )
+        db.add(tcs)
+        
+    db.commit()
+    db.refresh(p)
+    return get_problem(problem_id, None, db, current_user)
+
+@router.delete("/{problem_id}")
+def delete_problem(problem_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "instructor":
+        raise HTTPException(status_code=403, detail="Chỉ Giảng viên mới có quyền xóa bài tập.")
+        
+    p = db.query(Problem).filter(Problem.id == problem_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Problem not found")
+        
+    if p.creator_id and p.creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You don't have permission to delete this problem.")
+        
+    db.query(Submission).filter(Submission.problem_id == problem_id).delete()
+    db.query(ProblemDraft).filter(ProblemDraft.problem_id == problem_id).delete()
+    db.query(Favorite).filter(Favorite.problem_id == problem_id).delete()
+    db.query(ProblemListItem).filter(ProblemListItem.problem_id == problem_id).delete()
+    
+    sessions = db.query(AiChatSession).filter(AiChatSession.problem_id == problem_id).all()
+    for s in sessions:
+        db.query(AiChatMessage).filter(AiChatMessage.session_id == s.id).delete()
+    db.query(AiChatSession).filter(AiChatSession.problem_id == problem_id).delete()
+    
+    db.query(ProblemTopic).filter(ProblemTopic.problem_id == problem_id).delete()
+    
+    tcs = db.query(TestCase).filter(TestCase.problem_id == problem_id).all()
+    for tc in tcs:
+        db.query(TestCaseScript).filter(TestCaseScript.test_case_id == tc.id).delete()
+    db.query(TestCase).filter(TestCase.problem_id == problem_id).delete()
+    
+    db.delete(p)
+    db.commit()
+    return {"message": "Deleted successfully"}
+
+@router.post("", response_model=ProblemDetailResponse)
+def create_problem(problem: ProblemCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "instructor":
+        raise HTTPException(status_code=403, detail="Chỉ Giảng viên mới có quyền tạo bài tập.")
+        
+    prob_id = str(uuid.uuid4())
+    topics_list = [t.strip() for t in problem.topics.split(",")] if problem.topics else []
+    legacy_topic = problem.topics
+
+    new_prob = Problem(
+        id=prob_id,
+        number=problem.number,
+        title=problem.title,
+        topic=legacy_topic,
+        topics=topics_list,
+        difficulty=problem.difficulty,
+        practice_listed=(problem.visibility == "Public"),
+        description=problem.statement,
+        requirements=problem.requirements,
+        hint="\n".join(problem.hints) if problem.hints else None,
+        database_type=problem.database,
+        creator_id=current_user.id
+    )
+    db.add(new_prob)
+    
+    for t_name in topics_list:
+        if not t_name: continue
+        topic_obj = db.query(Topic).filter(Topic.name == t_name).first()
+        if not topic_obj:
+            topic_obj = Topic(id=str(uuid.uuid4()), name=t_name)
+            db.add(topic_obj)
+            db.commit()
+            db.refresh(topic_obj)
+        
+        pt = ProblemTopic(problem_id=prob_id, topic_id=topic_obj.id)
+        db.add(pt)
+        
+    test_cases_to_create = problem.test_cases if problem.test_cases else [
+        TestCaseCreate(schema_sql=problem.schema_sql, seed_data=problem.seed_data, is_hidden=False)
+    ]
+    
+    for idx, tc_data in enumerate(test_cases_to_create):
+        tc_id = str(uuid.uuid4())
+        tc = TestCase(
+            id=tc_id,
+            problem_id=prob_id,
+            is_hidden=tc_data.is_hidden,
+            order_index=idx + 1,
+            expected_query=problem.reference_solution
+        )
+        db.add(tc)
+        
+        tcs = TestCaseScript(
+            id=str(uuid.uuid4()),
+            test_case_id=tc_id,
+            table_name="Generated", 
+            create_script=tc_data.schema_sql or problem.schema_sql,
+            insert_script=tc_data.seed_data,
+            is_expected=False
+        )
+        db.add(tcs)
+    
+    db.commit()
+    db.refresh(new_prob)
+    
+    resp = ProblemDetailResponse.model_validate(new_prob)
+    resp.progress = "Not started"
+    return resp
+
+@router.post("/validate")
+def validate_problem_solution(request: ProblemValidateRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "instructor":
+        raise HTTPException(status_code=403, detail="Chỉ Giảng viên mới có quyền sử dụng công cụ kiểm tra Sandbox.")
+        
+    result = run_validate_sandbox(db, request.schema_sql, request.seed_data, request.reference_solution)
+    if result["status"] == "Error":
+        raise HTTPException(status_code=400, detail=result["message"])
+    return result
+
+@router.post("/{problem_id}/run")
+def run_query(problem_id: str, request: QueryRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    p = db.query(Problem).filter(Problem.id == problem_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Problem not found")
+        
+    result = run_sandbox(db, p, request.query, is_submit=False)
+    return result
+
+@router.post("/{problem_id}/submit")
+def submit_query(problem_id: str, request: QueryRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    p = db.query(Problem).filter(Problem.id == problem_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Problem not found")
+        
+    max_score = 100
+    result = run_sandbox(db, p, request.query, is_submit=True)
+    
+    status = result.get("status", "Runtime Error")
+    passed = result.get("passed", 0)
+    total = result.get("total", 1)
+    
+    if status == "Accepted":
+        score = max_score
+    elif status == "Partial":
+        score = int((passed / total) * max_score)
+    else:
+        score = 0
+    
+    sub = Submission(
+        id=str(uuid.uuid4()),
+        user_id=current_user.id,
+        problem_id=p.id,
+        source="Practice",
+        context="Practice",
+        result=status,
+        score=score,
+        query_text=request.query,
+        database_type=request.database or "SQL Server"
+    )
+    db.add(sub)
+    
+    today = datetime.datetime.utcnow().date()
+    last_date = current_user.last_streak_date.date() if current_user.last_streak_date else None
+    
+    if last_date != today:
+        if last_date == today - datetime.timedelta(days=1):
+            current_user.current_streak = (current_user.current_streak or 0) + 1
+            
+            milestones = [3, 5, 7, 10, 30, 50, 100, 365]
+            if current_user.current_streak in milestones or (current_user.current_streak > 10 and current_user.current_streak % 10 == 0):
+                notif = Notification(
+                    id=str(uuid.uuid4()),
+                    user_id=current_user.id,
+                    title="Cột mốc chuỗi học tập!",
+                    message=f"🔥 Chúc mừng! Bạn đã duy trì chuỗi học tập {current_user.current_streak} ngày liên tiếp.",
+                    type="Milestone",
+                    link="/practice"
+                )
+                db.add(notif)
+        elif last_date is None or last_date < today - datetime.timedelta(days=1):
+            current_user.current_streak = 1
+            
+        current_user.last_streak_date = datetime.datetime.utcnow()
+        if (current_user.current_streak or 0) > (current_user.longest_streak or 0):
+            current_user.longest_streak = current_user.current_streak
+            
+    db.commit()
+    db.refresh(sub)
+    
+    return {
+        **result,
+        "submission_id": sub.id,
+        "score": score
+    }

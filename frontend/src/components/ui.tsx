@@ -1,0 +1,166 @@
+import { useEffect, useId, useRef, type ReactNode } from "react";
+import { X } from "lucide-react";
+import type { DataTable } from "../data/models";
+export function Status({
+  value,
+  tone: explicitTone,
+}: {
+  value: string;
+  tone?: "neutral" | "warning";
+}) {
+  const tone =
+    explicitTone ||
+    (/Accepted|Solved|Active|Live|Easy|Open/.test(value)
+      ? "success"
+      : /Wrong|Runtime|Hard|Rejected/.test(value)
+        ? "danger"
+        : /Time Limit|Medium|Upcoming|Partial|Needs review/.test(value)
+          ? "warning"
+          : /In progress|Scheduled/.test(value)
+            ? "accent"
+            : "neutral");
+  return <span className={"status " + tone}>{value}</span>;
+}
+export function Loading({
+  label = "Loading student data…",
+}: {
+  label?: string;
+}) {
+  return (
+    <div role="status" className="empty-state">
+      <span className="spinner" />
+      {label}
+    </div>
+  );
+}
+export function Empty({
+  title = "No results",
+  children,
+}: {
+  title?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="empty-state">
+      <h3>{title}</h3>
+      {children && <p>{children}</p>}
+    </div>
+  );
+}
+export function ErrorState({
+  title,
+  message,
+  onRetry,
+}: {
+  title: string;
+  message: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <div className="empty-state" role="alert">
+      <h2>{title}</h2>
+      <p>{message}</p>
+      {onRetry && <button className="button" type="button" onClick={onRetry}>Try again</button>}
+    </div>
+  );
+}
+export function DataGrid({ table }: { table: DataTable }) {
+  return (
+    <div className="table-scroll" tabIndex={0} aria-label={table.name}>
+      <table className="data-table">
+        <caption className="sr-only">{table.name}</caption>
+        <thead>
+          <tr>
+            {table.columns.map((c) => (
+              <th key={c}>{c}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((r, i) => (
+            <tr key={i}>
+              {r.map((v, j) => (
+                <td key={j}>{v}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+export function Dialog({
+  title,
+  children,
+  onClose,
+  className = "",
+  closeOnBackdrop = true,
+  closeOnCancel = true,
+  headerActions,
+  hideClose = false,
+}: {
+  title: string;
+  children: ReactNode;
+  onClose: () => void;
+  className?: string;
+  closeOnBackdrop?: boolean;
+  closeOnCancel?: boolean;
+  headerActions?: ReactNode;
+  hideClose?: boolean;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const previousScroll = { x: window.scrollX, y: window.scrollY };
+    dialog.current?.showModal();
+    return () => {
+      previous?.focus({ preventScroll: true });
+      window.scrollTo(previousScroll.x, previousScroll.y);
+    };
+  }, []);
+  return (
+    <dialog
+      ref={dialog}
+      className={"dialog " + className}
+      aria-labelledby={titleId}
+      onCancel={(e) => {
+        e.preventDefault();
+        if (closeOnCancel) onClose();
+      }}
+      onClick={(e) => {
+        if (closeOnBackdrop && e.target === e.currentTarget) {
+          const bounds = e.currentTarget.getBoundingClientRect();
+          if (
+            e.clientX < bounds.left ||
+            e.clientX > bounds.right ||
+            e.clientY < bounds.top ||
+            e.clientY > bounds.bottom
+          )
+            onClose();
+        }
+      }}
+    >
+      <div className="section-heading">
+        <h2 id={titleId}>{title}</h2>
+        {headerActions}
+        {!hideClose && <button
+          className="icon-button"
+          onClick={onClose}
+          aria-label="Close dialog"
+        >
+          <X size={18} />
+        </button>}
+      </div>
+      {children}
+    </dialog>
+  );
+}
+export function PageHeading({ title, sub }: { title: string; sub: string }) {
+  return (
+    <div className="page-heading">
+      <h1>{title}</h1>
+      <p>{sub}</p>
+    </div>
+  );
+}
