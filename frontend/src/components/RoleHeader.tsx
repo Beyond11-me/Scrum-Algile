@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { LogOut, Moon, Sun } from "lucide-react";
+import { ChevronLeft, ChevronRight, List, LogOut, Moon, Sun } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { APP_NAME } from "../data/models";
@@ -8,13 +8,14 @@ import { studentApi } from "../services/studentApi";
 import { useLoad } from "./useLoad";
 
 type Role = "student" | "teacher" | "admin";
+export type WorkspaceHeader = { title: string; number: string; topic: string; source?: string; context?: string; backTo?: string; backLabel?: string; prevTo?: string | null; nextTo?: string | null };
 const links: Record<Role, [string, string][]> = {
-  student: [["Assignments", "/assignments"], ["Submissions", "/submissions"]],
+  student: [["Assignments", "/assignments"], ["Problems", "/problems"], ["Submissions", "/submissions"]],
   teacher: [["Problems", "/teacher/problems"], ["Assignments", "/teacher/assignments"], ["Classes", "/teacher/classes"], ["Results", "/teacher/results"]],
   admin: [["Users", "/admin/users"], ["Classes", "/admin/classes"], ["Overview", "/admin/overview"], ["Roles", "/admin/roles"]],
 };
 
-export function RoleHeader({ role, workspace }: { role: Role; workspace?: { title: string; number: string; topic: string; source?: string; context?: string; backTo?: string } }) {
+export function RoleHeader({ role, workspace }: { role: Role; workspace?: WorkspaceHeader }) {
   const { session, logout } = useAuth();
   const { dark, setTheme } = useTheme();
   const location = useLocation();
@@ -121,7 +122,9 @@ export function RoleHeader({ role, workspace }: { role: Role; workspace?: { titl
   const home = links[role][0][1];
   return <header className={`global-header role-header role-${role}${workspace ? " workspace-header" : ""}`}>
     <Link className="brand" to={home} aria-label={`${APP_NAME} home`}><img src="/favicon.svg" width="40" height="40" alt="" /><span className="brand-name">{APP_NAME}</span></Link>
-    {workspace ? <><Link className="back-link" to={workspace.backTo || "/assignments"}>← {workspace.source || "Assignments"}</Link><div className="workspace-identity"><b>{workspace.number}. {workspace.title}</b><small>{workspace.source || "Assignments"} / {workspace.context || workspace.topic}</small></div></> : <>
+    {workspace ? <><div className="workspace-problem-nav" role="navigation" aria-label="Problem navigation"><Link className="back-link" to={workspace.backTo || "/assignments"}><List size={16} aria-hidden="true" />{workspace.backLabel || workspace.source || "Assignments"}</Link>
+      {workspace.prevTo !== undefined && <>{workspace.prevTo ? <Link className="workspace-step" to={workspace.prevTo} aria-label="Previous problem"><ChevronLeft size={16} /></Link> : <span className="workspace-step" aria-disabled="true"><ChevronLeft size={16} /></span>}
+      {workspace.nextTo ? <Link className="workspace-step" to={workspace.nextTo} aria-label="Next problem"><ChevronRight size={16} /></Link> : <span className="workspace-step" aria-disabled="true"><ChevronRight size={16} /></span>}</>}</div><div className="workspace-identity"><b>{workspace.number}. {workspace.title}</b><small>{workspace.source || "Assignments"} / {workspace.context || workspace.topic}</small></div></> : <>
       <button type="button" className="mobile-menu" aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} aria-controls={`${role}-navigation`} onClick={() => setMenuOpen(value => !value)}>{menuOpen ? "Close" : "Menu"}</button>
       <nav ref={navRef} id={`${role}-navigation`} className={`${menuOpen ? "open " : ""}${indicator ? "has-indicator" : ""}`} aria-label={`${role} navigation`}>
         {indicator && <span className="nav-active-indicator" aria-hidden="true" style={{ transform: `translateX(${indicator.left}px)`, width: indicator.width }} />}

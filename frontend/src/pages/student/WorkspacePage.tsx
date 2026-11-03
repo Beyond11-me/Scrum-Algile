@@ -10,27 +10,28 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import CodeMirror from "@uiw/react-codemirror";
 import { sql, MSSQL } from "@codemirror/lang-sql";
 import { EditorView } from "@codemirror/view";
-import { X, Star, RotateCcw, Maximize2, Minimize2, Braces } from "lucide-react";
+import { Check, ChevronRight, Database, Lightbulb, Lock, Play, Star, RotateCcw, Maximize2, Minimize2, Braces, X } from "lucide-react";
 import { indentRange } from "@codemirror/language";
 import { AppHeader } from "../../components/AppHeader";
 import { DataGrid, Dialog, Empty, Loading, Status } from "../../components/ui";
 import { ProblemMarkdown } from "../../components/ProblemMarkdown";
 import { useLoad } from "../../components/useLoad";
-import { useTheme } from "../../context/ThemeContext";
 import { studentApi, type QueryResult } from "../../services/studentApi";
 import { storage } from "../../services/storage";
-import type { Problem, Submission } from "../../data/models";
+import type { DataTable, Problem, Submission } from "../../data/models";
 import { parseDatabaseSchema } from "../../utils/parseDatabaseSchema";
 import { parseSeedData } from "../../utils/parseSeedData";
+import { submissionTimeLabel } from "../../utils/serverDateTime";
 import { AiChatPanel } from "../../components/AiChatPanel";
+import { DifficultyBadge } from "./ProblemListPage";
 
 const WORKSPACE_LAYOUT_KEY = "sql-practice:workspace-layout";
-const DEFAULT_PROBLEM_WIDTH = 34;
-const DEFAULT_EDITOR_HEIGHT = 58;
+const DEFAULT_PROBLEM_WIDTH = 38;
+const DEFAULT_EDITOR_HEIGHT = 62;
 const MIN_PROBLEM_WIDTH = 22;
-const MAX_PROBLEM_WIDTH = 50;
+const MAX_PROBLEM_WIDTH = 55;
 const MIN_EDITOR_HEIGHT = 30;
-const MAX_EDITOR_HEIGHT = 75;
+const MAX_EDITOR_HEIGHT = 80;
 
 function clampPaneSize(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, Math.round(value * 10) / 10));
@@ -55,31 +56,49 @@ function readWorkspaceLayout() {
   }
 }
 
+// The editor stays dark in both app themes, matching the workspace design.
 const editorTheme = EditorView.theme({
   "&": {
-    backgroundColor: "var(--surface)",
-    color: "var(--text)",
+    backgroundColor: "var(--editor-bg)",
+    color: "var(--editor-text)",
     height: "100%",
   },
   ".cm-content": {
     fontFamily: '"JetBrains Mono", monospace',
-    padding: "24px 0",
+    padding: "14px 0",
     lineHeight: "24px",
+    caretColor: "var(--editor-text)",
   },
   ".cm-gutters": {
-    backgroundColor: "var(--surface)",
-    color: "var(--muted)",
+    backgroundColor: "var(--editor-bg)",
+    color: "var(--editor-gutter)",
     border: "none",
-    padding: "0 8px 0 16px",
+    padding: "0 6px 0 12px",
   },
-  ".cm-activeLine": { backgroundColor: "var(--subtle)" },
-  ".cm-activeLineGutter": { backgroundColor: "transparent" },
-  ".cm-cursor": { borderLeftColor: "var(--accent)" },
+  ".cm-activeLine": { backgroundColor: "var(--editor-active-line)" },
+  ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--editor-text)" },
+  ".cm-cursor": { borderLeftColor: "var(--editor-text)" },
   ".cm-scroller": { overflow: "auto" },
   ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
-    backgroundColor: "var(--selection)",
+    backgroundColor: "var(--editor-selection) !important",
   },
-});
+}, { dark: true });
+
+const editorExtensions = [sql({ dialect: MSSQL }), editorTheme];
+
+const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+
+function sameTable(actual?: DataTable | null, expected?: DataTable | null) {
+  if (!actual || !expected) return false;
+  const normalize = (value: unknown) => String(value ?? "").trim();
+  return (
+    actual.columns.length === expected.columns.length &&
+    actual.columns.every((column, index) => column.toLowerCase() === expected.columns[index]?.toLowerCase()) &&
+    actual.rows.length === expected.rows.length &&
+    actual.rows.every((row, rowIndex) => row.every((value, index) => normalize(value) === normalize(expected.rows[rowIndex]?.[index])))
+  );
+}
+
 export function WorkspacePage() {
   const { problemId = "" } = useParams();
   const [params] = useSearchParams();
@@ -106,15 +125,17 @@ export function WorkspacePage() {
         <main id="main-content">
           <Empty title="Problem unavailable">
             {error || "This problem ID does not exist."}{" "}
-            <Link to="/practice">Back to practice</Link>
+            <Link to="/problems">Back to problems</Link>
           </Empty>
         </main>
       </>
     );
   return <Workspace key={data.id} problem={data} />;
 }
+
+type Outcome = { kind: "run" | "submit"; value: QueryResult & { passed?: number; total?: number } };
+
 function Workspace({ problem }: { problem: Problem }) {
-  const { dark } = useTheme();
   const [params] = useSearchParams();
   const source: Submission["source"] =
     params.get("source") === "Assignments"
@@ -124,9 +145,11 @@ function Workspace({ problem }: { problem: Problem }) {
         : "Practice";
   const context = params.get("context") || source;
   const contextTitle = params.get("contextTitle") || context;
+  const practiceMode = source === "Practice";
   const contestMode = source === "Contests";
   const contestClosed = contestMode && params.get("closed") === "1";
   const contestAiAllowed = !contestMode || params.get("aiAllowed") === "1";
+  const topic = problem.topics?.[0] || problem.topic || "Uncategorized";
   const [favorite, setFavorite] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -145,20 +168,34 @@ function Workspace({ problem }: { problem: Problem }) {
   );
   const [selected, setSelected] = useState("");
   const [problemTab, setProblemTab] = useState("Description");
-  const [resultTab, setResultTab] = useState("Run result");
+  const [resultTab, setResultTab] = useState("Result");
   const [mobileTab, setMobileTab] = useState("Problem");
-  const [help, setHelp] = useState<"Hint" | null>(null);
+  const [hintOpen, setHintOpen] = useState(false);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
-  const [helpText, setHelpText] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<QueryResult | null>(null);
-  const [lastSubmit, setLastSubmit] = useState<QueryResult | null>(null);
+  const [busy, setBusy] = useState<"run" | "submit" | null>(null);
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [solvedNow, setSolvedNow] = useState(false);
   const [confirmResetQuery, setConfirmResetQuery] = useState(false);
   const [notice, setNotice] = useState("");
-  const helpTrigger = useRef<HTMLButtonElement | null>(null);
-  const helpClose = useRef<HTMLButtonElement>(null);
   const aiTrigger = useRef<HTMLButtonElement | null>(null);
   const alive = useRef(true);
+  const runRef = useRef<() => void>(() => {});
+  const problemList = useLoad(
+    () => (practiceMode ? studentApi.getProblems() : Promise.resolve([])),
+    [practiceMode],
+  );
+  const submissions = useLoad(
+    () => studentApi.getSubmissions().then((items: Submission[]) => items.filter((item) => item.problemId === problem.id)),
+    [problem.id],
+  );
+  const ordered = [...(problemList.data || [])].sort((a: any, b: any) =>
+    String(a.number).localeCompare(String(b.number), undefined, { numeric: true }));
+  const position = ordered.findIndex((item: any) => item.id === problem.id);
+  const neighbour = (offset: number) => {
+    const item = position >= 0 ? ordered[position + offset] : undefined;
+    return item ? `/workspace/${item.id}` : null;
+  };
+  const acceptance = position >= 0 ? ordered[position].acceptance : undefined;
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -196,52 +233,28 @@ function Workspace({ problem }: { problem: Problem }) {
       setFavoriteBusy(false);
     }
   }
-  useEffect(() => {
-    let active = true;
-    if (help) {
-      setHelpText("Loading guidance…");
-      studentApi.getHint(problem.id, source === "Practice" ? undefined : context).then((t) => {
-        if (active) setHelpText(t);
-      }).catch(() => { if (active) setHelpText("Guidance is unavailable right now."); });
-      helpClose.current?.focus();
-    }
-    return () => {
-      active = false;
-    };
-  }, [help, problem.id, source, context]);
-  function closeHelp() {
-    setHelp(null);
-    helpTrigger.current?.focus();
-  }
   function closeAiPanel() {
     setIsAiPanelOpen(false);
     aiTrigger.current?.focus();
   }
   useEffect(() => {
     function escape(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        if (expanded) {
-          setExpanded(false);
-          expandTrigger.current?.focus();
-          return;
-        }
-        if (help) {
-          setHelp(null);
-          helpTrigger.current?.focus();
-        }
+      if (e.key === "Escape" && expanded) {
+        setExpanded(false);
+        expandTrigger.current?.focus();
       }
     }
     document.addEventListener("keydown", escape);
     return () => {
       document.removeEventListener("keydown", escape);
     };
-  }, [help, expanded]);
-  async function run(kind: "selected" | "all" | "submit") {
+  }, [expanded]);
+  async function run(kind: "run" | "submit") {
     if (busy) return;
-    setBusy(true);
+    setBusy(kind);
     setExpanded(false);
     setNotice("");
-    setResultTab(kind === "submit" ? "Submissions" : "Run result");
+    setResultTab("Result");
     setMobileTab("Result");
     try {
       const value =
@@ -255,23 +268,26 @@ function Workspace({ problem }: { problem: Problem }) {
             )
           : await studentApi.runQuery(
               problem.id,
-              kind === "selected" ? selected : code,
+              selected.trim() ? selected : code,
               "SQL Server",
               source,
               context,
             );
       if (alive.current) {
-        if (kind === "submit") setLastSubmit(value);
-        else setResult(value);
-        setMobileTab("Result");
+        setOutcome({ kind, value });
+        if (kind === "submit") {
+          if (value.status === "Accepted") setSolvedNow(true);
+          void submissions.mutate();
+        }
       }
     } catch (error) {
       if (alive.current)
         setNotice(error instanceof Error ? error.message : "The SQL runner is unavailable. Try again.");
     } finally {
-      if (alive.current) setBusy(false);
+      if (alive.current) setBusy(null);
     }
   }
+  runRef.current = () => void run("run");
   function resizeFromPointer(
     orientation: "vertical" | "horizontal",
     clientX: number,
@@ -344,21 +360,29 @@ function Workspace({ problem }: { problem: Problem }) {
       );
     }
   }
-  const display = resultTab === "Submissions" ? lastSubmit : result;
   const schemaText = (problem as Problem & { schema?: string }).schema || "";
   const schemaTables = parseDatabaseSchema(schemaText);
   const seedDataText = (problem as Problem & { seedData?: string }).seedData || "";
   const seedTables = parseSeedData(seedDataText);
+  const progress = solvedNow ? "Solved" : (problem.progress || "Not started");
+  const display = outcome?.value;
+  const verdict = display?.status || "";
+  const errorVerdict = /Error|Time Limit/.test(verdict);
+  const matchesExpected = outcome?.kind === "run" && !errorVerdict && sameTable(display?.table, problem.expected);
+  const rowCount = display?.table?.rows?.length;
+  const ranSelection = !!selected.trim();
   return (
     <div className={"workspace" + (expanded ? " editor-expanded" : "") + (resizing ? ` is-resizing resizing-${resizing}` : "")}>
       <AppHeader
         workspace={{
           title: problem.title,
           number: problem.number,
-          topic: problem.topic || "Uncategorized",
+          topic,
           source,
-          context: source === "Practice" ? problem.topic || "Uncategorized" : contextTitle,
-          backTo: "/assignments",
+          context: practiceMode ? topic : contextTitle,
+          backTo: practiceMode ? "/problems" : "/assignments",
+          backLabel: practiceMode ? "Problems" : source,
+          ...(practiceMode && { prevTo: neighbour(-1), nextTo: neighbour(1) }),
         }}
       />
       <main id="main-content" className="workspace-main">
@@ -400,7 +424,7 @@ function Workspace({ problem }: { problem: Problem }) {
               role="tablist"
               aria-label="Problem information"
             >
-              {["Description", "Database"].map((t) => (
+              {["Description", "Database", "Submissions"].map((t) => (
                 <button
                   key={t}
                   role="tab"
@@ -413,28 +437,50 @@ function Workspace({ problem }: { problem: Problem }) {
               ))}
             </div>
             <div className="problem-scroll">
-              {problemTab === "Description" ? (
+              {problemTab === "Description" && (
                 <>
-                  <p className="tiny">PROBLEM {problem.number}</p>
-                  <h1>{problem.title}</h1>
-                  <div className="problem-meta">
-                    <Status value={problem.difficulty || "Unknown"} />
-                    <Status value={problem.topic || "Uncategorized"} />
-                    <Status
-                      value={
-                        lastSubmit?.status === "Accepted"
-                          ? "Solved"
-                          : (problem.progress || "Not started")
-                      }
-                    />
+                  <div className="problem-heading">
+                    <p className="problem-kicker">#{problem.number} · {topic}</p>
+                    <h1>{problem.title}</h1>
+                    <div className="problem-meta">
+                      <DifficultyBadge value={problem.difficulty || "Unknown"} />
+                      {(problem.topics?.length ? problem.topics : [topic]).map((t) => (
+                        <span className="problem-tag" key={t}>{t}</span>
+                      ))}
+                      <Status value={progress} />
+                      {acceptance !== undefined && <span className="problem-acceptance">Acceptance {acceptance}%</span>}
+                    </div>
                   </div>
                   <ProblemMarkdown>{problem.description || ""}</ProblemMarkdown>
-                  <h3>Requirements</h3>
-                  <ProblemMarkdown>{problem.requirements || ""}</ProblemMarkdown>
+                  {problem.requirements && <>
+                    <h3>Requirements</h3>
+                    <ProblemMarkdown>{problem.requirements}</ProblemMarkdown>
+                  </>}
                   {problem.expected && <><h3>Expected output</h3><DataGrid table={problem.expected} /><p className="tiny muted">Output shown for the sample dataset.</p></>}
-                  <hr />
+                  <div className={"problem-hint" + (contestMode ? " is-disabled" : "")}>
+                    <button
+                      type="button"
+                      aria-expanded={hintOpen}
+                      aria-controls="workspace-hint-panel"
+                      disabled={contestMode}
+                      title={contestMode ? "Hints are disabled during contests" : undefined}
+                      onClick={() => setHintOpen((value) => !value)}
+                    >
+                      <span><Lightbulb size={16} aria-hidden="true" />Hint</span>
+                      <small>{contestMode ? "Disabled in contests" : hintOpen ? "Hide" : "Show"}</small>
+                    </button>
+                    {hintOpen && !contestMode && (
+                      <div id="workspace-hint-panel">
+                        <ProblemMarkdown className="workspace-hint-content">
+                          {problem.hint || "No hint for this problem."}
+                        </ProblemMarkdown>
+                        <small className="muted">Guidance only · no complete solution.</small>
+                      </div>
+                    )}
+                  </div>
                 </>
-              ) : (
+              )}
+              {problemTab === "Database" && (
                 <>
                   <h2>Database setup</h2>
                   <p className="muted">SQL Server · read-only schema and seed data used for evaluation</p>
@@ -501,60 +547,35 @@ function Workspace({ problem }: { problem: Problem }) {
                   </section>
                 </>
               )}
-            </div>
-            <div
-              id="workspace-hint-panel"
-              className={"help-drawer-region" + (help ? " is-open" : "")}
-              aria-hidden={!help}
-            >
-              <div className="help-drawer-region-inner">
-                <section className="help-drawer" aria-label="Problem help">
-                  <div className="section-heading">
-                    <div className="help-tabs">
-                      {(["Hint"] as const).map((t) => (
-                        <button
-                          className={help === t ? "active" : ""}
-                          onClick={() => setHelp(t)}
-                          key={t}
-                        >
-                          {t}
-                        </button>
-                      ))}
+              {problemTab === "Submissions" && (
+                submissions.loading ? <Loading label="Loading submissions…" /> :
+                submissions.data?.length ? (
+                  <>
+                    <div className="workspace-submissions table-scroll">
+                      <table className="data-table">
+                        <thead><tr><th>Result</th><th>Score</th><th>Source</th><th>Submitted</th></tr></thead>
+                        <tbody>{submissions.data.map((item) => (
+                          <tr key={item.id}>
+                            <td><Status value={item.result} /></td>
+                            <td>{item.score}/{item.maxScore ?? 100}</td>
+                            <td>{item.source}</td>
+                            <td className="muted">{submissionTimeLabel(item.submittedAt)}</td>
+                          </tr>
+                        ))}</tbody>
+                      </table>
                     </div>
-                    <button
-                      className="icon-button"
-                      ref={helpClose}
-                      onClick={closeHelp}
-                      aria-label="Collapse help"
-                    >
-                      <X size={18} />
-                    </button>
+                    <Link className="text-button" to="/submissions">View full submission history →</Link>
+                  </>
+                ) : (
+                  <div className="workspace-placeholder">
+                    <Lock size={28} aria-hidden="true" />
+                    <p>No submissions yet</p>
+                    <small>Submit your query to see verdicts here.</small>
                   </div>
-                  <ProblemMarkdown className="workspace-hint-content" aria-live="polite">
-                    {helpText}
-                  </ProblemMarkdown>
-                  <small className="muted">
-                    Guidance only · no complete solution.
-                  </small>
-                </section>
-              </div>
+                )
+              )}
             </div>
             <div className="help-dock">
-              <button
-                ref={helpTrigger}
-                disabled={contestMode}
-                aria-expanded={!!help}
-                aria-controls="workspace-hint-panel"
-                title={
-                  contestMode ? "Hints are disabled during contests" : undefined
-                }
-                onClick={() => {
-                  if (help) closeHelp();
-                  else setHelp("Hint");
-                }}
-              >
-                {help ? "Hide hint" : "Show hint"}
-              </button>
               <button
                 ref={aiTrigger}
                 disabled={!contestAiAllowed}
@@ -618,55 +639,88 @@ function Workspace({ problem }: { problem: Problem }) {
               aria-label="SQL editor"
             >
               <div className="editor-toolbar">
-                <span className="editor-dialect">SQL Server</span>
-                <button className="icon-button" type="button" aria-label="Reset SQL query" title="Reset SQL query" onClick={() => setConfirmResetQuery(true)}><RotateCcw size={16} /></button>
-                <b>query.sql</b>
-                <button
-                  className="icon-button format-query"
-                  disabled={busy}
-                  aria-label="Format SQL indentation"
-                  title="Format SQL indentation"
-                  onClick={() => {
-                    const view = editor.current;
-                    if (view) {
-                      view.dispatch({
-                        changes: indentRange(
-                          view.state,
-                          0,
-                          view.state.doc.length,
-                        ),
-                      });
-                      view.focus();
+                <div className="editor-toolbar-group">
+                  <span className="editor-dialect"><Database size={14} aria-hidden="true" />SQL Server</span>
+                  <button
+                    className="icon-button format-query"
+                    type="button"
+                    disabled={!!busy}
+                    aria-label="Format SQL indentation"
+                    title="Format SQL indentation"
+                    onClick={() => {
+                      const view = editor.current;
+                      if (view) {
+                        view.dispatch({
+                          changes: indentRange(
+                            view.state,
+                            0,
+                            view.state.doc.length,
+                          ),
+                        });
+                        view.focus();
+                      }
+                    }}
+                  >
+                    <Braces size={16} />
+                  </button>
+                  <button className="icon-button" type="button" aria-label="Reset SQL query" title="Reset SQL query" onClick={() => setConfirmResetQuery(true)}><RotateCcw size={16} /></button>
+                  <button
+                    className="icon-button expand-editor"
+                    type="button"
+                    ref={expandTrigger}
+                    aria-label={
+                      expanded ? "Restore editor layout" : "Expand SQL editor"
                     }
-                  }}
-                >
-                  <Braces size={17} />
-                </button>
-                <small className="muted">Draft saved locally</small>
-                <button
-                  className="icon-button expand-editor"
-                  ref={expandTrigger}
-                  aria-label={
-                    expanded ? "Restore editor layout" : "Expand SQL editor"
-                  }
-                  aria-pressed={expanded}
-                  onClick={() => {
-                    setExpanded((value) => !value);
-                    setMobileTab("SQL");
-                  }}
-                >
-                  {expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                </button>
+                    title={expanded ? "Restore editor layout" : "Expand SQL editor"}
+                    aria-pressed={expanded}
+                    onClick={() => {
+                      setExpanded((value) => !value);
+                      setMobileTab("SQL");
+                    }}
+                  >
+                    {expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                  </button>
+                </div>
+                <div className="editor-toolbar-group">
+                  <button
+                    className="editor-run"
+                    type="button"
+                    disabled={!!busy}
+                    title={ranSelection ? "Run the selected SQL" : "Run the whole query"}
+                    onClick={() => void run("run")}
+                  >
+                    <Play size={14} aria-hidden="true" />
+                    {busy === "run" ? "Running…" : ranSelection ? "Run selection" : "Run"}
+                    <kbd>{isMac ? "⌘" : "Ctrl"} ↵</kbd>
+                  </button>
+                  <button
+                    className="editor-submit"
+                    type="button"
+                    disabled={!!busy || contestClosed}
+                    title={contestClosed ? "Contest submissions are closed" : undefined}
+                    onClick={() => void run("submit")}
+                  >
+                    {busy === "submit"
+                      ? "Submitting…"
+                      : contestClosed ? "Submissions closed" : "Submit"}
+                  </button>
+                </div>
               </div>
-              <div className="sql-editor">
+              <div
+                className="sql-editor"
+                onKeyDownCapture={(event) => {
+                  if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    runRef.current();
+                  }
+                }}
+              >
                 <CodeMirror
                   value={code}
                   height="100%"
-                  theme={dark ? "dark" : "light"}
-                  extensions={[
-                    sql({ dialect: MSSQL }),
-                    editorTheme,
-                  ]}
+                  theme="dark"
+                  extensions={editorExtensions}
                   onChange={setCode}
                   onCreateEditor={(view) => {
                     editor.current = view;
@@ -674,49 +728,21 @@ function Workspace({ problem }: { problem: Problem }) {
                   onUpdate={(v) => {
                     const selection = v.state.selection.main;
                     const line = v.state.doc.lineAt(selection.head);
-                    setCursor({
-                      line: line.number,
-                      column: selection.head - line.from + 1,
-                    });
+                    const column = selection.head - line.from + 1;
+                    setCursor((current) =>
+                      current.line === line.number && current.column === column
+                        ? current
+                        : { line: line.number, column },
+                    );
                     setSelected(v.state.sliceDoc(selection.from, selection.to));
                   }}
                   aria-label="SQL query"
                   basicSetup={{ foldGutter: false, highlightActiveLine: true }}
                 />
               </div>
-              <div className="editor-actions">
-                <span className="cursor-position muted">
-                  Ln {cursor.line}, Col {cursor.column}
-                </span>
-                <button
-                  className="button"
-                  disabled={busy || !selected.trim()}
-                  title={
-                    !selected.trim()
-                      ? "Select SQL text in the editor first"
-                      : undefined
-                  }
-                  onClick={() => void run("selected")}
-                >
-                  Run selected
-                </button>
-                <button
-                  className="button"
-                  disabled={busy}
-                  onClick={() => void run("all")}
-                >
-                  Run all
-                </button>
-                <button
-                  className="button primary"
-                  disabled={busy || contestClosed}
-                  title={contestClosed ? "Contest submissions are closed" : undefined}
-                  onClick={() => void run("submit")}
-                >
-                  {busy && resultTab === "Submissions"
-                    ? "Submitting…"
-                    : contestClosed ? "Submissions closed" : "Submit"}
-                </button>
+              <div className="editor-statusbar">
+                <span>Draft saved locally</span>
+                <span className="cursor-position">Ln {cursor.line}, Col {cursor.column}</span>
               </div>
             </section>
             <div
@@ -749,60 +775,67 @@ function Workspace({ problem }: { problem: Problem }) {
               }
               aria-label="Query output"
             >
-              <div
-                className="pane-tabs"
-                role="tablist"
-                aria-label="Execution output"
-              >
-                {["Run result", "Submissions"].map((t) => (
-                  <button
-                    key={t}
-                    role="tab"
-                    aria-selected={resultTab === t}
-                    className={resultTab === t ? "active" : ""}
-                    onClick={() => setResultTab(t)}
-                  >
-                    {t}
-                  </button>
-                ))}
+              <div className="pane-tabs result-tabs">
+                <div role="tablist" aria-label="Execution output">
+                  {["Result", ...(problem.expected ? ["Expected output"] : [])].map((t) => (
+                    <button
+                      key={t}
+                      role="tab"
+                      aria-selected={resultTab === t}
+                      className={resultTab === t ? "active" : ""}
+                      onClick={() => setResultTab(t)}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                {resultTab === "Result" && rowCount !== undefined && !busy && (
+                  <span className="result-meta">{rowCount} {rowCount === 1 ? "row" : "rows"}</span>
+                )}
               </div>
               <div
-                className={"result-scroll" + (!display ? " idle" : "")}
+                className={"result-scroll" + (resultTab === "Result" && !display && !busy ? " idle" : "")}
                 aria-live="polite"
               >
-                {busy ? (
+                {resultTab === "Expected output" ? (
+                  problem.expected
+                    ? <DataGrid table={problem.expected} />
+                    : <p className="muted">No expected output for this problem.</p>
+                ) : busy ? (
                   <Loading
-                    label={
-                      resultTab === "Submissions"
-                        ? "Submitting solution…"
-                        : "Running query…"
-                    }
+                    label={busy === "submit" ? "Submitting solution…" : "Running query…"}
                   />
                 ) : display ? (
                   <>
-                    <Status value={display.status} />
-                    <p>{display.message}</p>
+                    {outcome?.kind === "submit" ? (
+                      <div className={"result-verdict " + (verdict === "Accepted" ? "success" : "danger")}>
+                        {verdict === "Accepted" ? <Check size={18} aria-hidden="true" /> : <X size={18} aria-hidden="true" />}
+                        <b>{verdict === "Partial" ? "Partially correct" : verdict}</b>
+                        {display.total !== undefined && <span>Passed {display.passed ?? 0}/{display.total} test cases</span>}
+                      </div>
+                    ) : errorVerdict ? (
+                      <div className="result-verdict danger"><X size={18} aria-hidden="true" /><b>{verdict}</b></div>
+                    ) : matchesExpected ? (
+                      <p className="result-line success"><Check size={16} aria-hidden="true" />Matches the expected output for the sample data</p>
+                    ) : problem.expected ? (
+                      <p className="result-line">Query ran. Compare with the <button type="button" className="text-button" onClick={() => setResultTab("Expected output")}>expected output <ChevronRight size={14} /></button></p>
+                    ) : (
+                      <p className="result-line">Query ran on the sample data. Submit to check it against the test cases.</p>
+                    )}
+                    {display.message && (outcome?.kind === "submit" || errorVerdict) && <p className={errorVerdict ? "result-error" : "result-message"}>{display.message}</p>}
                     {display.table && <DataGrid table={display.table} />}
-                    <p className="tiny muted">{resultTab === "Submissions" ? "Submission saved to your history." : "Executed against the problem dataset."}</p>
-                    {resultTab === "Submissions" && (
-                      <Link className="text-button" to="/submissions">
-                        View submission history →
-                      </Link>
+                    {outcome?.kind === "submit" && (
+                      <button type="button" className="text-button" onClick={() => { setProblemTab("Submissions"); setMobileTab("Problem"); }}>
+                        View submissions for this problem →
+                      </button>
                     )}
                   </>
                 ) : (
-                  <>
-                    <h2>
-                      {resultTab === "Submissions"
-                        ? "No submissions yet"
-                        : "No result yet"}
-                    </h2>
-                    <p className="muted">
-                      Run the query to preview returned data. Submit when ready
-                      for evaluation.
-                    </p>
-                    <small>SQL Server evaluation</small>
-                  </>
+                  <div className="workspace-placeholder">
+                    <Database size={28} aria-hidden="true" />
+                    <p>Press <b>Run</b> to see the query result</p>
+                    <small>Submit when ready for evaluation against hidden test cases.</small>
+                  </div>
                 )}
                 {notice && (
                   <p role="status" className="form-message">
@@ -825,7 +858,7 @@ function Workspace({ problem }: { problem: Problem }) {
           </div>
         </div>
       </main>
-      {confirmResetQuery && <Dialog title="Reset SQL query?" onClose={() => setConfirmResetQuery(false)}><p>Your current SQL draft will be cleared from this browser.</p><div className="dialog-actions"><button className="button" type="button" onClick={() => setConfirmResetQuery(false)}>Cancel</button><button className="button primary" type="button" onClick={() => { setCode(""); setResult(null); setLastSubmit(null); setConfirmResetQuery(false); }}>Clear query</button></div></Dialog>}
+      {confirmResetQuery && <Dialog title="Reset SQL query?" onClose={() => setConfirmResetQuery(false)}><p>Your current SQL draft will be cleared from this browser.</p><div className="dialog-actions"><button className="button" type="button" onClick={() => setConfirmResetQuery(false)}>Cancel</button><button className="button primary" type="button" onClick={() => { setCode(""); setOutcome(null); setConfirmResetQuery(false); }}>Clear query</button></div></Dialog>}
     </div>
   );
 }
