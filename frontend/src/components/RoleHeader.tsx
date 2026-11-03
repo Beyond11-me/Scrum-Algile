@@ -11,7 +11,7 @@ type Role = "student" | "teacher" | "admin";
 const links: Record<Role, [string, string][]> = {
   student: [["Assignments", "/assignments"], ["Submissions", "/submissions"]],
   teacher: [["Problems", "/teacher/problems"], ["Assignments", "/teacher/assignments"], ["Classes", "/teacher/classes"], ["Results", "/teacher/results"]],
-  admin: [["Classes", "/admin/classes"]],
+  admin: [["Users", "/admin/users"], ["Classes", "/admin/classes"], ["Overview", "/admin/overview"], ["Roles", "/admin/roles"]],
 };
 
 export function RoleHeader({ role, workspace }: { role: Role; workspace?: { title: string; number: string; topic: string; source?: string; context?: string; backTo?: string } }) {

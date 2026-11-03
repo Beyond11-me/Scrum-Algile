@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from app.database import engine, Base
 
-import app.models # Ensure models are loaded before create_all
+import app.models  # Ensure models are loaded before create_all
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="iSQL API", version="1.0.0")
@@ -34,11 +34,27 @@ def healthcheck():
         raise HTTPException(status_code=503, detail="Database unavailable")
     return {"status": "ok", "revision": os.getenv("APP_REVISION", "local")}
 
-from app.routers import auth, dashboard, problems, submissions, preferences, notifications, ai, admin_classes, classes, assignments, student_assignments
+from app.routers import (
+    auth,
+    dashboard,
+    problems,
+    submissions,
+    preferences,
+    notifications,
+    ai,
+    admin_classes,
+    admin_users,
+    admin_overview,
+    classes,
+    assignments,
+    student_assignments,
+)
 
 # Import routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(admin_classes.router, prefix="/api/admin/classes", tags=["Admin Classes"])
+app.include_router(admin_users.router, prefix="/api/admin/users", tags=["Admin Users"])
+app.include_router(admin_overview.router, prefix="/api/admin/overview", tags=["Admin Overview"])
 app.include_router(classes.router, prefix="/api/teacher/classes", tags=["Teacher Classes"])
 app.include_router(assignments.router)
 app.include_router(student_assignments.router, prefix="/api/student/assignments", tags=["Student Assignments"])

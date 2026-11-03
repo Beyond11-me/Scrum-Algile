@@ -29,7 +29,16 @@ import { ProblemLibraryPage, AssignmentsListPage } from "../pages/teacher/Teache
 import { AssignmentBuilderPage } from "../pages/teacher/BuilderPages";
 import { ClassesPage } from "../pages/teacher/ClassesPage";
 import { ManualReviewPage, ResultsDashboardPage } from "../pages/teacher/ResultsPages";
-import { AdminClassesPage } from "../pages/admin/AdminClassesPage";
+import {
+  AdminUsersPage,
+  AdminEditAccountPage,
+  AdminLecturerApprovalsPage,
+  AdminRolesPage,
+  AdminCoursesPage,
+  AdminEditClassPage,
+  AdminLecturersPage,
+  AdminOverviewPage,
+} from "../pages/admin/AdminClassesPage";
 
 const WorkspacePage = lazy(() =>
   import("../pages/student/WorkspacePage").then((module) => ({
@@ -86,7 +95,7 @@ export function App() {
   const { session } = useAuth();
   const home =
     session?.role === "admin"
-      ? "/admin/classes"
+      ? "/admin/users"
       : session?.role === "instructor"
       ? "/teacher/problems"
       : "/assignments";
@@ -151,9 +160,17 @@ export function App() {
         </Route>
         <Route element={<AdminRoute />}>
           <Route path="/admin" element={<AdminShell />}>
-            <Route index element={<Navigate replace to="classes" />} />
-            <Route path="classes" element={<AdminClassesPage />} />
-            <Route path="*" element={<Navigate replace to="classes" />} />
+            <Route index element={<Navigate replace to="users" />} />
+            <Route path="users" element={<AdminUsersPage />} />
+            <Route path="users/:email/edit" element={<AdminEditAccountPage />} />
+            <Route path="users/approvals" element={<AdminLecturerApprovalsPage />} />
+            <Route path="roles" element={<AdminRolesPage />} />
+            <Route path="courses" element={<AdminCoursesPage />} />
+            <Route path="classes" element={<AdminCoursesPage />} />
+            <Route path="courses/classes/:classId/edit" element={<AdminEditClassPage />} />
+            <Route path="courses/lecturers" element={<AdminLecturersPage />} />
+            <Route path="overview" element={<AdminOverviewPage />} />
+            <Route path="*" element={<Navigate replace to="users" />} />
           </Route>
         </Route>
         <Route

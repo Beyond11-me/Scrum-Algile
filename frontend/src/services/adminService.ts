@@ -1,51 +1,78 @@
 import { apiFetch } from "./apiClient";
 
-export interface AdminClass {
-  id: string;
-  course: string;
-  term: string;
-  instructor_id?: string | null;
-  instructor_name?: string | null;
-  students: number;
-  status: string;
-  start_date?: string | null;
-  end_date?: string | null;
-}
-
-export interface LecturerOption {
-  id: string;
+export interface AdminUser {
+  id?: string;
   name: string;
   email: string;
-}
-
-export interface ClassCreateInput {
-  id: string;
-  course: string;
-  term: string;
-  instructor_id?: string;
-  start_date?: string;
-  end_date?: string;
+  role: "Student" | "Lecturer" | "Admin" | string;
+  status: "Active" | "Inactive" | "Pending" | string;
+  lastActive: string;
+  joined: string;
+  detail: string;
 }
 
 export const adminService = {
-  async getClasses(): Promise<AdminClass[]> {
+  async getUsers(): Promise<AdminUser[]> {
+    return apiFetch("/api/admin/users");
+  },
+
+  async updateUser(email: string, data: Partial<AdminUser>): Promise<AdminUser> {
+    return apiFetch(`/api/admin/users/${encodeURIComponent(email)}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async createUser(data: any): Promise<AdminUser> {
+    return apiFetch("/api/admin/users", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async getClasses(): Promise<any[]> {
     return apiFetch("/api/admin/classes");
   },
 
-  async getLecturers(): Promise<LecturerOption[]> {
-    return apiFetch("/api/admin/classes/lecturers");
-  },
-
-  async createClass(data: ClassCreateInput): Promise<AdminClass> {
+  async createClass(data: any): Promise<any> {
     return apiFetch("/api/admin/classes", {
       method: "POST",
       body: JSON.stringify(data),
     });
   },
 
-  async deleteClass(id: string): Promise<void> {
+  async updateClass(id: string, data: any): Promise<any> {
     return apiFetch(`/api/admin/classes/${encodeURIComponent(id)}`, {
-      method: "DELETE",
+      method: "PUT",
+      body: JSON.stringify(data),
     });
   },
+
+  async getLecturerRequests(): Promise<any[]> {
+    return apiFetch("/api/admin/users/lecturer-requests");
+  },
+
+  async approveLecturerRequest(id: string): Promise<any> {
+    return apiFetch(`/api/admin/users/lecturer-requests/${encodeURIComponent(id)}/approve`, {
+      method: "POST"
+    });
+  },
+
+  async rejectLecturerRequest(id: string): Promise<any> {
+    return apiFetch(`/api/admin/users/lecturer-requests/${encodeURIComponent(id)}/reject`, {
+      method: "POST"
+    });
+  },
+
+  async getOverviewStats(): Promise<any> {
+    return apiFetch("/api/admin/overview/stats");
+  },
+
+  async getActivities(): Promise<any[]> {
+    return apiFetch("/api/admin/overview/activities");
+  },
+
+  async getErrors(): Promise<any[]> {
+    return apiFetch("/api/admin/overview/errors");
+  }
 };
