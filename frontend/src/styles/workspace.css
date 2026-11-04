@@ -113,8 +113,12 @@
 .workspace .result-error { padding: 10px 14px; border-radius: var(--radius-md); background: var(--subtle); color: var(--text); font: 12px/1.6 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 .workspace .result-message { font-size: 13px; color: var(--text-secondary); }
 .workspace .result-scroll > .text-button { align-self: flex-start; }
+.workspace .submission-output { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.workspace .submission-output h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--text); }
+.workspace .submission-output p { margin: 0; }
 
 @media (max-width: 760px) {
+  .workspace .submission-output { grid-template-columns: minmax(0, 1fr); }
   .workspace .workspace-main { padding: 0; }
   .workspace .problem-pane,
   .workspace .result-pane,
