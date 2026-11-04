@@ -133,7 +133,7 @@ export function WorkspacePage() {
         <main id="main-content">
           <Empty title="Problem unavailable">
             {error || "This problem ID does not exist."}{" "}
-            <Link to="/problems">Back to problems</Link>
+            <Link to="/assignments">Back to assignments</Link>
           </Empty>
         </main>
       </>
@@ -407,8 +407,8 @@ function Workspace({ problem }: { problem: Problem }) {
           topic,
           source,
           context: practiceMode ? topic : contextTitle,
-          backTo: practiceMode ? "/problems" : "/assignments",
-          backLabel: practiceMode ? "Problems" : source,
+          backTo: "/assignments",
+          backLabel: practiceMode ? "Assignments" : source,
           ...(practiceMode && { prevTo: neighbour(-1), nextTo: neighbour(1) }),
         }}
       />

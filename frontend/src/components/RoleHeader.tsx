@@ -10,7 +10,7 @@ import { useLoad } from "./useLoad";
 type Role = "student" | "teacher" | "admin";
 export type WorkspaceHeader = { title: string; number: string; topic: string; source?: string; context?: string; backTo?: string; backLabel?: string; prevTo?: string | null; nextTo?: string | null };
 const links: Record<Role, [string, string][]> = {
-  student: [["Assignments", "/assignments"], ["Problems", "/problems"], ["Submissions", "/submissions"]],
+  student: [["Assignments", "/assignments"], ["Submissions", "/submissions"]],
   teacher: [["Problems", "/teacher/problems"], ["Assignments", "/teacher/assignments"], ["Classes", "/teacher/classes"], ["Results", "/teacher/results"]],
   admin: [["Users", "/admin/users"], ["Classes", "/admin/classes"], ["Overview", "/admin/overview"], ["Roles", "/admin/roles"]],
 };

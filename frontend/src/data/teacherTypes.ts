@@ -16,6 +16,7 @@ export type TeacherProblem = {
   expectedColumns: string[];
   expectedRows: (string | number)[][];
   testCases?: { seedData: string; isHidden: boolean }[];
+  submissionCount?: number;
 };
 
 export type TeacherClass = {
