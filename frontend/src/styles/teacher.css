@@ -455,9 +455,11 @@
 .teacher-review-code-section { margin-bottom:16px; }
 .teacher-review-code-section h2 { margin:0 0 12px; color:var(--accent); font-size:11px; font-weight:500; }
 .teacher-readonly-code { min-height:0; margin:0; overflow:auto; white-space:pre; }
-.teacher-sql-block { border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; background:var(--subtle); }
-.teacher-sql-block .teacher-readonly-code { max-height:320px; resize:none; border:0; border-radius:0; }
-.teacher-sql-block .teacher-readonly-code.is-resized { max-height:none; }
+.teacher-sql-block { border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; background:var(--surface); }
+.teacher-sql-code .cm-editor { max-height:320px; background:var(--surface); font-size:12px; }
+.teacher-sql-code .cm-scroller { font-family:inherit; }
+.teacher-sql-code .cm-gutters { background:var(--canvas); color:var(--muted); border-right:1px solid var(--border); }
+.teacher-sql-code.is-resized > div,.teacher-sql-code.is-resized .cm-editor { height:100%; max-height:none; }
 .teacher-sql-resize { display:grid; place-items:center; height:16px; border-top:1px solid var(--border-subtle); cursor:ns-resize; touch-action:none; user-select:none; }
 .teacher-sql-resize::before { content:""; width:32px; height:3px; border-radius:var(--radius-full); background:var(--muted); }
 .teacher-sql-resize:hover::before,.teacher-sql-resize:active::before,.teacher-sql-resize:focus-visible::before { background:var(--accent); }

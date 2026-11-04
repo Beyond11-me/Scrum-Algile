@@ -8,7 +8,6 @@ import {
 } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import CodeMirror from "@uiw/react-codemirror";
-import { sql, MSSQL } from "@codemirror/lang-sql";
 import { EditorView } from "@codemirror/view";
 import { Check, ChevronRight, Database, Lightbulb, Lock, Play, Star, RotateCcw, Maximize2, Minimize2, Braces, X } from "lucide-react";
 import { indentRange } from "@codemirror/language";
@@ -23,6 +22,7 @@ import { parseDatabaseSchema } from "../../utils/parseDatabaseSchema";
 import { parseSeedData } from "../../utils/parseSeedData";
 import { submissionTimeLabel } from "../../utils/serverDateTime";
 import { AiChatPanel } from "../../components/AiChatPanel";
+import { sqlCodeExtensions } from "../../components/sqlCodeTheme";
 import { DifficultyBadge } from "./ProblemListPage";
 
 const WORKSPACE_LAYOUT_KEY = "sql-practice:workspace-layout";
@@ -84,7 +84,7 @@ const editorTheme = EditorView.theme({
   },
 }, { dark: true });
 
-const editorExtensions = [sql({ dialect: MSSQL }), editorTheme];
+const editorExtensions = [...sqlCodeExtensions(true), editorTheme];
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
@@ -719,7 +719,7 @@ function Workspace({ problem }: { problem: Problem }) {
                 <CodeMirror
                   value={code}
                   height="100%"
-                  theme="dark"
+                  theme="none"
                   extensions={editorExtensions}
                   onChange={setCode}
                   onCreateEditor={(view) => {

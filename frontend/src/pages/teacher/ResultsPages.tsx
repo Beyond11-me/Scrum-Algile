@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState, useRef } from "react";
+import CodeMirror from "@uiw/react-codemirror";
+import { EditorView } from "@codemirror/view";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Dialog, ErrorState, Loading } from "../../components/ui";
 import { TeacherField, TeacherPageIntro, TeacherSectionTitle } from "./TeacherPageParts";
 import { teacherService, type TeacherSubmissionItem } from "../../services/teacherService";
 import { useLoad } from "../../components/useLoad";
+import { sqlCodeExtensions } from "../../components/sqlCodeTheme";
+import { useTheme } from "../../context/ThemeContext";
 import { formatSql } from "../../utils/formatSql";
 
 const SQL_BLOCK_MIN_HEIGHT = 72;
@@ -13,7 +17,13 @@ const SQL_BLOCK_KEY_STEP = 40;
 function ReviewSqlBlock({ label, query }: { label: string; query: string }) {
   const [code, setCode] = useState(query);
   const [height, setHeight] = useState<number | null>(null);
-  const codeRef = useRef<HTMLPreElement>(null);
+  const codeRef = useRef<HTMLDivElement>(null);
+  const { dark } = useTheme();
+  const extensions = useMemo(
+    // tabindex keeps the read-only code reachable for keyboard scrolling.
+    () => [...sqlCodeExtensions(dark), EditorView.contentAttributes.of({ tabindex: "0", "aria-label": label })],
+    [dark, label],
+  );
   const drag = useRef<{ startY: number; startHeight: number } | null>(null);
 
   useEffect(() => {
@@ -31,15 +41,20 @@ function ReviewSqlBlock({ label, query }: { label: string; query: string }) {
 
   return (
     <div className="teacher-sql-block">
-      <pre
+      <div
         ref={codeRef}
-        className={`teacher-readonly-code${height === null ? "" : " is-resized"}`}
+        className={`teacher-sql-code${height === null ? "" : " is-resized"}`}
         style={height === null ? undefined : { height }}
-        tabIndex={0}
-        aria-label={label}
       >
-        <code>{code}</code>
-      </pre>
+        <CodeMirror
+          value={code}
+          theme="none"
+          editable={false}
+          readOnly
+          extensions={extensions}
+          basicSetup={{ lineNumbers: true, foldGutter: false, highlightActiveLine: false, highlightActiveLineGutter: false }}
+        />
+      </div>
       <div
         className="teacher-sql-resize"
         role="separator"

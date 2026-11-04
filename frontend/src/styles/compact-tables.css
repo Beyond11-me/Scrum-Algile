@@ -756,8 +756,8 @@ body:has(.compact-tables-page) { overflow: hidden; }
 .teacher-sql-editor-content p { margin: 0; font-size: 13px; }
 
 .teacher-dataset-picker { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; font-size: 13px; }
-.teacher-dataset-picker select { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: white; color: var(--text); font: inherit; }
-.teacher-dataset-filename { width: 150px; min-width: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: white; color: var(--text); font: inherit; }
+.teacher-dataset-picker select { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; }
+.teacher-dataset-filename { width: 150px; min-width: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font: inherit; }
 
 .teacher-problem-editor-validation .teacher-code-editor:is(.teacher-schema-editor, .teacher-seed-editor, .teacher-solution-editor) {
   height: 140px;
@@ -771,12 +771,12 @@ body:has(.compact-tables-page) { overflow: hidden; }
 .teacher-sql-editor-dialog > .section-heading { gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
 .teacher-sql-editor-actions { display: flex; gap: 8px; margin-left: auto; }
 .teacher-sql-popup-codemirror { overflow: hidden; border: 1px solid var(--border); border-radius: 8px; }
-.teacher-sql-popup-codemirror .cm-editor { background: var(--subtle); font-size: 14px; }
+.teacher-sql-popup-codemirror .cm-editor { background: var(--surface); font-size: 14px; }
 .teacher-sql-popup-codemirror .cm-scroller { font-family: inherit; }
 .teacher-sql-popup-codemirror .cm-gutters { background: var(--canvas); color: var(--muted); border-right: 1px solid var(--border); }
 
 .teacher-sql-inline-preview { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; cursor: pointer; }
-.teacher-sql-inline-preview .cm-editor { background: var(--subtle); font-size: 12px; }
+.teacher-sql-inline-preview .cm-editor { background: var(--surface); font-size: 12px; }
 .teacher-sql-inline-preview .cm-scroller { font-family: inherit; }
 .teacher-sql-inline-preview .cm-content { cursor: pointer; }
 .teacher-sql-inline-preview .cm-gutters { background: var(--canvas); color: var(--muted); border-right: 1px solid var(--border); }
@@ -794,7 +794,7 @@ body:has(.compact-tables-page) { overflow: hidden; }
 .teacher-dataset-picker .button { flex-shrink: 0; }
 .teacher-test-case .teacher-code-title { justify-content: flex-end !important; }
 
-.teacher-dataset-file-field { display: flex; align-items: center; border: 1px solid var(--border); border-radius: 6px; background: white; overflow: hidden; }
+.teacher-dataset-file-field { display: flex; align-items: center; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); overflow: hidden; }
 .teacher-dataset-file-field .teacher-dataset-filename { border: 0; border-radius: 0; width: 110px; }
 .teacher-dataset-file-extension { padding-right: 10px; color: var(--muted); font-size: 12px; user-select: none; }
 .teacher-dataset-hidden { display: flex; align-items: center; gap: 5px; white-space: nowrap; cursor: pointer; color: var(--muted); }
