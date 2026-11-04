@@ -6,6 +6,9 @@ import { Empty, ErrorState, Loading, Status } from "../../components/ui";
 
 const ASSIGNMENT_PROBLEM_PAGE_SIZE = 10;
 
+function workspacePath(problemId: string, assignmentId: string) {
+  return `/workspace/${encodeURIComponent(problemId)}?source=Assignments&context=${encodeURIComponent(assignmentId)}`;
+}
 
 export function AssignmentWorkPage() {
   const { assignmentId } = useParams();
@@ -58,11 +61,11 @@ export function AssignmentWorkPage() {
       </div>
       {pageItems.map((p, i) => {
         const progress = work.problemProgress[p.id] || "Not started";
-        return <button type="button" className={`assignment-problem-row assignment-problem-select${pageSelectedProblem?.id === p.id ? " selected" : ""}`} key={p.id} aria-pressed={pageSelectedProblem?.id === p.id} onClick={() => setSelectedProblemId(p.id)}>
+        return <article className={`assignment-problem-row assignment-problem-select${pageSelectedProblem?.id === p.id ? " selected" : ""}`} key={p.id} onClick={() => setSelectedProblemId(p.id)}>
           <span className="assignment-problem-number">{String(firstProblemIndex + i + 1).padStart(2, "0")}</span>
-          <div><h3>{p.title}</h3><p>{p.topic} · {p.difficulty}</p></div>
+          <div><h3><Link className="title-link" to={workspacePath(p.id, work.id)}>{p.title}</Link></h3><p>{p.topic} · {p.difficulty}</p></div>
           <span className={"assignment-problem-status " + (progress === "Solved" ? "solved" : progress === "In progress" ? "in-progress" : "")}>{progress}</span>
-        </button>;
+        </article>;
       })}
       {!items.length && <Empty title="No problems yet" />}
     </section>
@@ -75,11 +78,11 @@ export function AssignmentWorkPage() {
 
 function AssignmentProblemDetails({ problemId, assignmentId, problem, progress }: { problemId: string; assignmentId: string; problem?: { id: string; title: string; topic: string; difficulty: string }; progress: string }) {
   const { data, loading, error } = useLoad(() => studentApi.getProblem(problemId, assignmentId), [problemId, assignmentId]);
-  const to = `/workspace/${encodeURIComponent(problemId)}?source=Assignments&context=${encodeURIComponent(assignmentId)}`;
+  const to = workspacePath(problemId, assignmentId);
   if (!problem) return <div className="assignment-selected-empty"><h2>Problem details</h2><p className="tiny muted">Select a problem to view its details.</p></div>;
   return <>
     <h2>Problem details</h2>
-    <h3>{problem.title}</h3>
+    <h3><Link className="title-link" to={to}>{problem.title}</Link></h3>
     <div className="assignment-selected-meta"><span className={`assignment-problem-status ${progress === "Solved" ? "solved" : progress === "In progress" ? "in-progress" : ""}`}>{progress}</span><span>{problem.difficulty}</span></div>
     <Link className="button primary" to={to}>{progress === "Solved" ? "Review" : progress === "In progress" ? "Continue solving" : "Start solving"} →</Link>
     <dl className="assignment-selected-facts"><div><dt>Topic</dt><dd>{problem.topic}</dd></div></dl>

@@ -89,7 +89,7 @@
 }
 .account-identity small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 .mobile-menu {
   display: none;
@@ -459,7 +459,7 @@
   flex-direction: column;
   justify-content: space-around;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 .activity-grid {
   width: 100%;
@@ -492,7 +492,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
   margin: 12px 0 0 40px;
 }
@@ -538,7 +538,7 @@
   text-align: center;
 }
 .weekday {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
   padding: 4px;
 }
@@ -572,7 +572,7 @@
   left: calc(50% - 2px);
 }
 .calendar-legend {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--muted);
   display: flex;
   justify-content: space-between;
@@ -720,7 +720,7 @@ body:has(.assignments-page) {
 }
 .class-card:hover {
   border-color: var(--accent);
-  background: var(--accent-subtle);
+  background: color-mix(in srgb, var(--accent-subtle) 15%, var(--surface));
   color: var(--text);
 }
 .class-card:focus-visible {
@@ -766,7 +766,7 @@ body:has(.assignments-page) {
 .class-card-footer small {
   display: block;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 2px;
 }
 /* Shared outer frame for Student sidebar cards. */
@@ -906,7 +906,7 @@ body:has(.assignments-page) {
 }
 .featured-contest small {
   margin-top: auto;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 16px;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1045,7 +1045,7 @@ body:has(.assignments-page) {
 .fame-row small {
   display: block;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 16px;
   margin-top: 3px;
 }
@@ -1056,7 +1056,7 @@ body:has(.assignments-page) {
   display: block;
   margin-top: 2px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 16px;
   white-space: nowrap;
 }
@@ -1628,7 +1628,7 @@ body:has(.assignments-page) {
   }
   .activity-legend {
     margin-left: 36px;
-    font-size: 8px;
+    font-size: 11px;
   }
   .activity-caption {
     display: none;
@@ -1720,7 +1720,7 @@ body:has(.assignments-page) {
   }
   .list-footer {
     padding: 16px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .workspace-header {
     gap: 12px;
@@ -1808,7 +1808,7 @@ body:has(.assignments-page) {
     gap: 8px;
   }
   .editor-toolbar small {
-    font-size: 9px;
+    font-size: 11px;
   }
   .result-scroll {
     padding: 24px;

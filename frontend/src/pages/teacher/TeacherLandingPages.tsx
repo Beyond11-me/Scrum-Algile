@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ErrorState, Loading } from "../../components/ui";
+import { InstructorOnlyButton } from "../../components/withRoleAccess";
 import { teacherService } from "../../services/teacherService";
 import { TeacherField } from "./TeacherPageParts";
 
@@ -147,13 +148,13 @@ export function ProblemLibraryPage() {
                 <option>Private</option>
               </select>
             </TeacherField>
-            <button
+            <InstructorOnlyButton
               className="button primary teacher-problem-new"
               type="button"
               onClick={() => navigate("/teacher/problems/new")}
             >
               New problem
-            </button>
+            </InstructorOnlyButton>
           </div>
           <div className="teacher-list-detail-layout">
             <div className="teacher-list-detail-main">
@@ -182,17 +183,12 @@ export function ProblemLibraryPage() {
                       >
                         <td data-label="ID">{problem.number}</td>
                         <td data-label="PROBLEM">
-                          <button
+                          <Link
                             className="teacher-selectable-row-title teacher-library-title"
-                            type="button"
-                            aria-label={`Show details for ${problem.title}`}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setSelectedProblemId(problem.id);
-                            }}
+                            to={`/teacher/problems/${problem.id}/edit`}
                           >
                             {problem.title}
-                          </button>
+                          </Link>
                         </td>
                         <td data-label="DIFFICULTY">{problem.difficulty}</td>
                         <td data-label="TOPICS">{problem.topics}</td>
@@ -249,7 +245,9 @@ export function ProblemLibraryPage() {
                   <div className="teacher-problem-detail-body">
                     <span className="teacher-detail-eyebrow">PROBLEM DETAILS</span>
                     <h2>
-                      {selectedProblem.number} · {selectedProblem.title}
+                      <Link className="title-link" to={`/teacher/problems/${selectedProblem.id}/edit`}>
+                        {selectedProblem.number} · {selectedProblem.title}
+                      </Link>
                     </h2>
                     <p className="muted">{selectedProblem.topics}</p>
                     <dl className="teacher-list-detail-facts">
@@ -401,13 +399,13 @@ export function AssignmentsListPage() {
                 <option>Closed</option>
               </select>
             </TeacherField>
-            <button
+            <InstructorOnlyButton
               className="button primary teacher-problem-new"
               type="button"
               onClick={() => navigate("/teacher/assignments/new")}
             >
               New assignment
-            </button>
+            </InstructorOnlyButton>
           </div>
           <div className="teacher-list-detail-layout">
             <div className="teacher-list-detail-main">
@@ -415,7 +413,7 @@ export function AssignmentsListPage() {
                 ref={tableScrollRef}
                 className="teacher-table-scroll teacher-list-table-scroll sticky-list-table-wrap"
               >
-                <table className="teacher-table teacher-library-table sticky-list-table">
+                <table className="teacher-table teacher-library-table teacher-assignment-list-table sticky-list-table">
                   <thead>
                     <tr>
                       <th>TITLE</th>
@@ -435,17 +433,12 @@ export function AssignmentsListPage() {
                         onClick={() => setSelectedId(item.id)}
                       >
                         <td data-label="TITLE">
-                          <button
+                          <Link
                             className="teacher-selectable-row-title teacher-library-title"
-                            type="button"
-                            aria-label={`Show details for ${item.title}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedId(item.id);
-                            }}
+                            to={`/teacher/assignments/${item.id}/edit`}
                           >
                             {item.title}
-                          </button>
+                          </Link>
                         </td>
                         <td data-label="CLASSES">{item.classes}</td>
                         <td data-label="PROBLEMS">{item.problemCount} problems</td>
@@ -502,7 +495,7 @@ export function AssignmentsListPage() {
                 <>
                   <div className="teacher-problem-detail-body">
                     <span className="teacher-detail-eyebrow">ASSIGNMENT DETAILS</span>
-                    <h2>{selected.title}</h2>
+                    <h2><Link className="title-link" to={`/teacher/assignments/${selected.id}/edit`}>{selected.title}</Link></h2>
                     <p className="muted">{selected.classes}</p>
                     <dl className="teacher-list-detail-facts">
                       <div>

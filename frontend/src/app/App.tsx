@@ -119,7 +119,7 @@ export function App() {
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Route>
-        <Route element={<ProtectedRoute />}>
+        <Route element={<ProtectedRoute allowedRoles={["student"]} />}>
           <Route element={<Shell />}>
             <Route path="/assignments" element={<AssignmentsPage />} />
             <Route

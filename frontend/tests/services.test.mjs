@@ -57,6 +57,11 @@ assert.equal(loginBody.email, "instructor@demo.local");
 assert.equal(loginBody.password, "password123");
 assert.equal((await authService.restoreSessionAsync()).id, "teacher-1");
 
+memory.set(SESSION_KEY, JSON.stringify({ id: "legacy-teacher", name: "Lecturer", initials: "L", email: "lecturer@example.edu", role: "lecturer" }));
+assert.equal(authService.restoreSession()?.role, "instructor");
+memory.set(SESSION_KEY, JSON.stringify({ id: "unknown-role", name: "Unknown", initials: "U", email: "unknown@example.edu", role: "manager" }));
+assert.equal(authService.restoreSession(), null);
+
 const dashboard = await studentApi.getDashboard();
 assert.equal(dashboard.solved, 1);
 assert.deepEqual((await studentApi.getProblems({ progress: "Not started" })).map(item => item.id), ["P1", "P2"]);

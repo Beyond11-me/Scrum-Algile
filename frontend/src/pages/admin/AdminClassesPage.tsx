@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "re
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Search } from "lucide-react";
 import { Dialog, Empty, ErrorState, Loading } from "../../components/ui";
+import { AdminOnlyButton } from "../../components/withRoleAccess";
 import {
   adminCapabilities,
   defaultAdminRolePolicy,
@@ -192,14 +193,14 @@ export function AdminUsersPage() {
       </div>
       <div className="admin-user-actions">
         <button className="button admin-button" onClick={exportCsv} disabled={users.length === 0}>Export all CSV</button>
-        <button className="button primary admin-button" onClick={() => setDialog(true)}>Add user</button>
+        <AdminOnlyButton className="button primary admin-button" onClick={() => setDialog(true)}>Add user</AdminOnlyButton>
       </div>
     </div>
     {notice && <Notice>{notice}</Notice>}
     <Split main={<>
       <div className="admin-table-wrap compact-table-scroll" role="region" aria-label="Users table" tabIndex={0}><table className="admin-table admin-users-table"><thead><tr><th>NAME / EMAIL</th><th>ROLE</th><th>STATUS</th><th>LAST ACTIVE</th></tr></thead><tbody>
         {pageUsers.map((user) => <tr key={user.email} className={selected?.email === user.email ? "is-selected" : ""} onClick={() => { setSelectedEmail(user.email); setShowUserDetails(true); }}>
-          <td data-label="NAME / EMAIL"><button className="admin-row-link" onClick={() => { setSelectedEmail(user.email); setShowUserDetails(true); }}>{user.name}</button><small>{user.email}</small></td><td data-label="ROLE">{user.role}</td><td data-label="STATUS" className={user.status === "Active" ? "admin-success" : ""}>{user.status}</td><td data-label="LAST ACTIVE">{user.lastActive}</td>
+          <td data-label="NAME / EMAIL"><Link className="admin-row-link" to={`/admin/users/${encodeURIComponent(user.email)}/edit`}>{user.name}</Link><small>{user.email}</small></td><td data-label="ROLE">{user.role}</td><td data-label="STATUS" className={user.status === "Active" ? "admin-success" : ""}>{user.status}</td><td data-label="LAST ACTIVE">{user.lastActive}</td>
         </tr>)}
       </tbody></table>
         {filtered.length === 0 && <Empty title={users.length === 0 ? "No accounts yet" : "No matching accounts"}>{users.length === 0 ? "Add a user to get started." : "Try a different search or filter."}</Empty>}
@@ -215,7 +216,7 @@ export function AdminUsersPage() {
         </div>
       </div>
     </>} side={selected ? <>
-      <div className="admin-compact-panel-header"><h2>Account details</h2><button type="button" className="text-button compact-panel-back" onClick={() => setShowUserDetails(false)}>Back to users</button></div><h3 className="admin-detail-title">{selected.name}</h3><p className="admin-muted">{selected.email}</p><div className="admin-detail-divider" />
+      <div className="admin-compact-panel-header"><h2>Account details</h2><button type="button" className="text-button compact-panel-back" onClick={() => setShowUserDetails(false)}>Back to users</button></div><h3 className="admin-detail-title"><Link className="title-link" to={`/admin/users/${encodeURIComponent(selected.email)}/edit`}>{selected.name}</Link></h3><p className="admin-muted">{selected.email}</p><div className="admin-detail-divider" />
       <Field label="ROLE"><select value={pendingRole ?? selected.role} onChange={(e) => setPendingRole(e.target.value)}><option>Student</option><option>Lecturer</option><option>Admin</option></select></Field>
       {pendingRole && pendingRole !== selected.role && (
         <button className="button primary admin-button" style={{ marginBottom: "1rem" }} onClick={() => { handleUpdateRole(selected, pendingRole); setPendingRole(null); }}>Save role</button>
@@ -1184,7 +1185,7 @@ function OverviewActivityPanel({ activity, onClose }: { activity: any; onClose: 
         <div className="admin-detail-divider" />
         <h3 className="admin-subheading">Current class information</h3>
         {relatedClass ? <dl className="teacher-list-detail-facts">
-          <div><dt>Class code</dt><dd>{relatedClass.id}</dd></div>
+          <div><dt>Class code</dt><dd><Link className="title-link" to={`/admin/courses/classes/${encodeURIComponent(relatedClass.id)}/edit`}>{relatedClass.id}</Link></dd></div>
           <div><dt>Course</dt><dd>{relatedClass.course}</dd></div>
           <div><dt>Semester</dt><dd>{relatedClass.semester || "—"}</dd></div>
           <div><dt>Lecturer</dt><dd>{relatedClass.lecturer}</dd></div>
@@ -1229,7 +1230,7 @@ function OverviewUnassignedClassesPanel({ onClose }: { onClose: () => void }) {
     {loading ? <Loading label="Loading classes…" /> : error ? <><p className="admin-warning" role="alert">{error}</p><button type="button" className="button admin-button" onClick={() => void loadClasses()}>Retry</button></> : selected ? <>
       <Field label={"UNASSIGNED CLASSES (" + classes.length + ")"}><select value={selected.id} onChange={event => setSelectedId(event.target.value)}>{classes.map(item => <option key={item.id} value={item.id}>{item.id} · {item.course}</option>)}</select></Field>
       <div className="admin-detail-divider" />
-      <h3 className="admin-detail-title">{selected.id}</h3>
+      <h3 className="admin-detail-title"><Link className="title-link" to={`/admin/courses/classes/${encodeURIComponent(selected.id)}/edit`}>{selected.id}</Link></h3>
       <dl className="teacher-list-detail-facts">
         <div><dt>Course</dt><dd>{selected.course}</dd></div>
         <div><dt>Semester</dt><dd>{selected.semester || "—"}</dd></div>

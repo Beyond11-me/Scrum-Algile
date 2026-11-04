@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { type Submission } from "../data/models";
 import { Dialog, Status } from "./ui";
 import { submissionTimeLabel } from "../utils/serverDateTime";
+import { formatSql } from "../utils/formatSql";
 export function SubmissionDetails({
   submission,
   problem,
@@ -33,7 +34,7 @@ export function SubmissionDetails({
           #{submission.id} · Read-only
         </p>
         <h1>
-          {p.number}. {p.title}
+          <Link className="title-link" to={"/workspace/" + p.id}>{p.number}. {p.title}</Link>
         </h1>
         <div className="submission-attempt-meta">
           <p className="tiny muted">{submissionTimeLabel(submission.submittedAt)}</p>
@@ -135,10 +136,7 @@ function SubmittedSqlDialog({ query, database, onClose }: { query: string; datab
   const [copyState, setCopyState] = useState("");
   useEffect(() => {
     let active = true;
-    const databaseName = (database || "").toLowerCase();
-    const language = databaseName.includes("postgres") ? "postgresql" : databaseName.includes("mysql") ? "mysql" : databaseName.includes("sqlite") ? "sqlite" : databaseName.includes("sql server") || databaseName.includes("mssql") ? "transactsql" : "sql";
-    import("sql-formatter").then(({ format }) => {
-      const formatted = format(query, { language, tabWidth: 2 });
+    formatSql(query, database).then((formatted) => {
       if (active) { setCode(formatted); setFormatState("Formatted SQL · " + (database || "SQL")); }
     }).catch(() => {
       if (active) setFormatState("Formatting unavailable for this query. Showing the original SQL.");

@@ -77,7 +77,7 @@ function AuthLayout({
   return (
     <main
       id="main-content"
-      className={`auth-page${centered ? " auth-page--centered" : " auth-page--split"}${compact ? " auth-page--compact" : ""}${register ? " auth-page--register" : ""}`}
+      className={`auth-page${centered ? " auth-page--centered" : " auth-page--split"}${compact ? " auth-page--compact" : ""}`}
     >
       {!centered && (
       <section className="auth-brand-panel" aria-label={`${APP_NAME} introduction`}>
@@ -142,7 +142,7 @@ export function LoginPage() {
     intended && /^\/admin(?:\/|\?|#|$)/.test(intended) ? intended : null;
   const destination =
     intended &&
-    /^\/(dashboard|practice|workspace|assignments|contests|submissions)(\/|\?|#|$)/.test(
+    /^\/(dashboard|practice|problems|workspace|assignments|contests|submissions)(\/|\?|#|$)/.test(
       intended,
     )
       ? intended
@@ -152,12 +152,7 @@ export function LoginPage() {
     setErrors({});
     setMessage("");
     const next: Errors = {};
-    if (
-      !["teacher", "admin"].includes(email.trim().toLowerCase()) &&
-      !validEmail(email.trim())
-    ) {
-      next.email = "Enter a valid email address or a demo account.";
-    }
+    if (!validEmail(email.trim())) next.email = "Enter a valid email address.";
     if (!password.trim()) next.password = "Enter a password.";
     if (Object.keys(next).length) {
       setErrors(next);
@@ -185,15 +180,15 @@ export function LoginPage() {
     void signIn();
   }
   return (
-    <AuthLayout showTeacherNote={false} compact>
+    <AuthLayout showTeacherNote={false} centered>
       <form onSubmit={submit} noValidate>
         <label className="field" htmlFor="login-email">
-          Email or account
+          Email
           <input
             id="login-email"
-            type="text"
+            type="email"
             autoComplete="username"
-            placeholder="name@example.com, teacher, or admin"
+            placeholder="name@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             aria-invalid={!!errors.email}
@@ -445,7 +440,7 @@ export function RegisterPage() {
     if (Object.keys(next).length) return;
     setBusy(true);
     try {
-      await auth.register(name.trim(), email, password);
+      await auth.register(name.trim(), email.trim(), password);
       navigate("/dashboard", { replace: true, state: { welcome: true } });
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Registration failed.");
@@ -454,7 +449,7 @@ export function RegisterPage() {
     }
   }
   return (
-    <AuthLayout register showTeacherNote={false}>
+    <AuthLayout register centered showTeacherNote={false}>
       <form onSubmit={(e) => void submit(e)} noValidate>
         <label className="field" htmlFor="register-name">
           Full name
@@ -511,7 +506,7 @@ export function RegisterPage() {
           </p>
         )}
         <button className="button primary full" disabled={busy}>
-          {busy ? "Creating your account…" : "Continue"}
+          {busy ? "Creating your account…" : "Create account"}
         </button>
         <p className="auth-switch" style={{ marginBottom: "0.5rem" }}>
           Already have an account? <Link to="/login">Sign in</Link>
@@ -559,7 +554,7 @@ export function RegisterLecturerPage() {
 
   if (success) {
     return (
-      <AuthLayout register title="Request Submitted" subtitle="Your lecturer account request is awaiting approval." showTeacherNote={false}>
+      <AuthLayout centered title="Request Submitted" subtitle="Your lecturer account request is awaiting approval." showTeacherNote={false}>
         <div style={{ textAlign: "center", margin: "2rem 0" }}>
           <p style={{ marginBottom: "2rem" }}>An administrator will review your request. You will be able to log in once it has been approved.</p>
           <button className="button primary full" onClick={() => navigate("/login")}>Back to Sign in</button>
@@ -569,7 +564,7 @@ export function RegisterLecturerPage() {
   }
 
   return (
-    <AuthLayout register title="Register as Lecturer" subtitle={`Submit a request to become a lecturer on ${APP_NAME}.`} showTeacherNote={false}>
+    <AuthLayout centered title="Register as Lecturer" subtitle={`Submit a request to become a lecturer on ${APP_NAME}.`} showTeacherNote={false}>
       <form onSubmit={(e) => void submit(e)} noValidate>
         <label className="field" htmlFor="reg-name">
           Full Name
