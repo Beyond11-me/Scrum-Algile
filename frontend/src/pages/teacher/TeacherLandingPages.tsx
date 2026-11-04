@@ -120,9 +120,6 @@ export function ProblemLibraryPage() {
       ) : (
         <>
           <div className="teacher-list-filters teacher-problem-filters">
-            <button className="button" type="button" onClick={() => setIncludeArchived((value) => !value)}>
-              {includeArchived ? "Hide archived" : "Show archived"}
-            </button>
             <TeacherField label="SEARCH">
               <input
                 value={search}
@@ -159,6 +156,9 @@ export function ProblemLibraryPage() {
                 <option>Private</option>
               </select>
             </TeacherField>
+            <button className="button teacher-archive-toggle" type="button" onClick={() => setIncludeArchived((value) => !value)}>
+              {includeArchived ? "Hide archived" : "Show archived"}
+            </button>
             <InstructorOnlyButton
               className="button primary teacher-problem-new"
               type="button"

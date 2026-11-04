@@ -194,7 +194,7 @@ def run_validate_sandbox(db: Session, schema_sql: str, seed_data: str, query: st
     except Exception as e:
         return {"status": "Error", "message": f"Validation failed: {str(e)}"}
 
-def run_sandbox(db: Session, problem: Problem, query: str, is_submit: bool) -> Dict[str, Any]:
+def run_sandbox(db: Session, problem: Problem, query: str, is_submit: bool, allow_hidden: bool = True) -> Dict[str, Any]:
     try:
         rewritten_query = rewrite_query(query)
         
@@ -220,6 +220,8 @@ def run_sandbox(db: Session, problem: Problem, query: str, is_submit: bool) -> D
         if not is_submit:
             visible_cases = [tc for tc in test_cases if (tc.get('is_hidden', False) if isinstance(tc, dict) else getattr(tc, 'is_hidden', False)) == False]
             if not visible_cases:
+                if not allow_hidden:
+                    raise SandboxError("Bài tập không có test công khai để chạy thử.")
                 visible_cases = [test_cases[0]]
             test_cases_to_run = visible_cases[:1]
         else:
