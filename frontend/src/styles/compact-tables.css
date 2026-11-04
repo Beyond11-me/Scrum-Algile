@@ -328,8 +328,11 @@ body:has(.compact-tables-page) { overflow: hidden; }
 .compact-student-submissions .submissions-split .submissions-table { min-width: 0; width: 100%; }
 .compact-student-submissions .submissions-table th,
 .compact-student-submissions .submissions-table td { padding-left: 12px; padding-right: 12px; }
-.submission-select-button { display: block; width: 100%; min-width: 0; border: 0; padding: 0; background: transparent; color: inherit; font: inherit; font-weight: 700; text-align: left; white-space: normal; overflow-wrap: anywhere; cursor: pointer; }
-.submission-select-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 2px; }
+.submission-problem-link { color: inherit; font: inherit; font-weight: 700; white-space: normal; overflow-wrap: anywhere; }
+.submission-problem-link:hover { color: var(--accent); }
+.submission-problem-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 2px; }
+.submissions-split .submissions-table tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.submissions-split .submission-mobile-row { cursor: pointer; }
 @media (max-width: 760px) {
   .submissions-list-column { gap: 8px; }
   .compact-student-submissions .submissions-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -527,8 +530,9 @@ body:has(.compact-tables-page) { overflow: hidden; }
 .assignment-selection-layout .detail-work-row:hover { background: var(--subtle); }
 .assignment-selection-layout .detail-work-row.selected { background: var(--accent-subtle); }
 .assignment-selection-layout .assignment-code { width: 60px; }
-.class-assignment-select { width: 100%; padding: 0; border: 0; background: transparent; font: inherit; color: inherit; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
-.class-assignment-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.class-assignment-title { font: inherit; color: inherit; overflow-wrap: anywhere; }
+.class-assignment-title:hover { color: var(--accent); }
+.class-assignment-title:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 .assignment-selection-layout .class-assignment-details { align-self: stretch; min-height: 0; overflow-y: auto; overscroll-behavior: auto; padding: 16px; }
 .class-assignment-details > h2 { margin: 0 0 16px; }
 .class-assignment-details h3 { font-size: 14px; line-height: 22px; margin: 0 0 10px; overflow-wrap: anywhere; }
@@ -570,7 +574,6 @@ body:has(.compact-tables-page) { overflow: hidden; }
 .assignment-problem-select { width: 100%; border: 0; border-top: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .assignment-problem-select:hover { background: var(--subtle); }
 .assignment-problem-select.selected { background: var(--accent-subtle); }
-.assignment-problem-select:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .assignment-selected-details { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
 .assignment-selected-details > h2,.assignment-selected-empty h2 { margin: 0 0 14px; font-size: 16px; }
 .assignment-selected-details > h3 { margin: 0 0 10px; font-size: 14px; line-height: 21px; overflow-wrap: anywhere; }

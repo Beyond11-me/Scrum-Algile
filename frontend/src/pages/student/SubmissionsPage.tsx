@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Link } from "react-router-dom";
 import { studentApi } from "../../services/studentApi";
 import { type Submission } from "../../data/models";
@@ -8,6 +8,13 @@ import { Empty, ErrorState, Loading, Status } from "../../components/ui";
 import { submissionTimeLabel } from "../../utils/serverDateTime";
 
 const SUBMISSION_PAGE_SIZE = 15;
+
+/** The title link leaves the page, so the row itself is how the keyboard reaches a submission's details. */
+function selectOnKey(event: KeyboardEvent<HTMLElement>, select: () => void) {
+  if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+  event.preventDefault();
+  select();
+}
 
 export function SubmissionsPage() {
   const [selected, setSelected] = useState<Submission | null>(null);
@@ -110,15 +117,16 @@ export function SubmissionsPage() {
                 {pageSubmissions.map((s: Submission) => {
                   const p =
                     problemsList?.find((p: any) => p.id === s.problemId) || {
+                      id: s.problemId,
                       number: "?",
                       title: "Unknown problem",
                     };
                   return (
-                    <tr key={s.id} className={selected?.id === s.id ? "selected" : undefined} onClick={() => setSelected(s)}>
+                    <tr key={s.id} className={selected?.id === s.id ? "selected" : undefined} tabIndex={0} aria-current={selected?.id === s.id ? "true" : undefined} onClick={() => setSelected(s)} onKeyDown={(event) => selectOnKey(event, () => setSelected(s))}>
                       <td>
-                        <button type="button" className="submission-select-button" onClick={() => setSelected(s)} aria-pressed={selected?.id === s.id}>
+                        <Link className="submission-problem-link" to={"/workspace/" + p.id}>
                           {p.number}. {p.title}
-                        </button>
+                        </Link>
                       </td>
                       <td>
                         {s.source}
@@ -145,20 +153,23 @@ export function SubmissionsPage() {
             {pageSubmissions.map((s: Submission) => {
               const p =
                 problemsList?.find((p: any) => p.id === s.problemId) || {
+                  id: s.problemId,
                   number: "?",
                   title: "Unknown problem",
                 };
               return (
-                <button
+                <article
                   className={`submission-mobile-row${selected?.id === s.id ? " selected" : ""}`}
-                  aria-pressed={selected?.id === s.id}
+                  tabIndex={0}
+                  aria-current={selected?.id === s.id ? "true" : undefined}
                   key={s.id}
                   onClick={() => setSelected(s)}
+                  onKeyDown={(event) => selectOnKey(event, () => setSelected(s))}
                 >
                   <span className="submission-mobile-main">
                     <span className="submission-mobile-problem">
                       <b>
-                        {p.number}. {p.title}
+                        <Link className="title-link" to={"/workspace/" + p.id}>{p.number}. {p.title}</Link>
                       </b>
                       <small>{s.source} · {s.contextTitle || s.context}</small>
                     </span>
@@ -167,7 +178,7 @@ export function SubmissionsPage() {
                   <span className="submission-mobile-meta">
                     <small>{submissionTimeLabel(s.submittedAt)}</small>
                   </span>
-                </button>
+                </article>
               );
             })}
           </div>

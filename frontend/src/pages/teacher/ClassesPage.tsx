@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
+import { Link } from "react-router-dom";
 import { Dialog, ErrorState, Loading } from "../../components/ui";
 import {
   type TeacherClass,
@@ -135,11 +136,12 @@ export function ClassesPage() {
                       <button
                         className="teacher-table-link teacher-class-identity"
                         type="button"
-                        aria-label={`Show summary for ${classInfo.id}`}
+                        aria-label={`Open details for ${classInfo.id}`}
                         aria-current={selectedClass?.id === classInfo.id ? "true" : undefined}
                         onClick={(event) => {
                           event.stopPropagation();
                           selectClass(classInfo);
+                          openClassDetails();
                         }}
                       >
                         <span>{classInfo.id}</span>
@@ -172,7 +174,7 @@ export function ClassesPage() {
             <div className="teacher-class-detail-heading">
               <div>
                 <span className="teacher-detail-eyebrow">CLASS SUMMARY</span>
-                <h2>{selectedClass.id}</h2>
+                <h2><button type="button" className="title-link" onClick={openClassDetails}>{selectedClass.id}</button></h2>
                 <p className="muted">{selectedClass.course} · {selectedClass.term}</p>
               </div>
               <span className={selectedClass.status === "Active" ? "teacher-state-success" : "muted"}>{selectedClass.status}</span>
@@ -217,7 +219,7 @@ export function ClassesPage() {
                 <article className="teacher-class-assignment" key={assignment.id}>
                   <div className="teacher-class-assignment-topline">
                     <div>
-                      <strong>{assignment.title}</strong>
+                      <strong><Link className="title-link" to={`/teacher/assignments/${assignment.id}/edit`}>{assignment.title}</Link></strong>
                       <small>Due {assignment.due || "—"} · {assignment.status}</small>
                     </div>
                     <b>{assignment.submitted}</b>
