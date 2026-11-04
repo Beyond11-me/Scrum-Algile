@@ -49,6 +49,20 @@ export const authService = {
     return persist(data.user, data.access_token);
   },
   
+  async getProfile(): Promise<StudentSession & { nextProfileChangeAt: string | null }> {
+    return apiFetch("/api/auth/profile");
+  },
+
+  async updateProfile(body: { name?: string; currentPassword?: string; newPassword?: string }) {
+    const data = await apiFetch("/api/auth/profile", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+    const token = storage.get(TOKEN_KEY);
+    if (!token) throw new Error("Sign in again before changing your account.");
+    return persist(data, token);
+  },
+
   logout() {
     sessionVersion += 1;
     storage.remove(SESSION_KEY);

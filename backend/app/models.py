@@ -48,6 +48,7 @@ class User(Base):
     id = Column(Unicode(50), primary_key=True, default=generate_uuid)
     email = Column(Unicode(255), unique=True, index=True, nullable=False)
     hashed_password = Column(Unicode(255), nullable=False)
+    password_record = Column(Unicode(512), nullable=True)
     name = Column(Unicode(255), nullable=False)
     initials = Column(Unicode(10), nullable=False)
     # Kept while routers and frontend migrate to the normalised role relation.
@@ -57,6 +58,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     last_active = Column(DateTime, default=datetime.datetime.utcnow)
     department = Column(Unicode(255), nullable=True)
+    profile_updated_at = Column(DateTime, nullable=True)
     current_streak = Column(Integer, default=0)
     longest_streak = Column(Integer, default=0)
     last_streak_date = Column(DateTime, nullable=True)

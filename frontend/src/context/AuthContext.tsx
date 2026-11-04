@@ -7,6 +7,7 @@ type Auth = {
   session: StudentSession | null;
   login: (email: string, password: string) => Promise<StudentSession>;
   demoLogin: () => Promise<void>;
+  updateSession: (session: StudentSession) => void;
   logout: () => void;
 };
 const AuthContext = createContext<Auth | null>(null);
@@ -29,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return user;
     },
     demoLogin: async () => setSession(await authService.demoLogin()),
+    updateSession: (next) => setSession(next),
     logout: () => {
       authService.logout();
       setSession(null);

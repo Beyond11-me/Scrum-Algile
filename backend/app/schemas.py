@@ -259,13 +259,6 @@ class AdminUserResponse(CamelModel):
     joined: str
     detail: str
 
-class LecturerRequestResponse(CamelModel):
-    id: str
-    name: str
-    email: str
-    department: str
-    submitted: str
-
 class AdminUserUpdate(BaseModel):
     name: str
     email: str

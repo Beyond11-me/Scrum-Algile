@@ -1,5 +1,15 @@
 import { storage } from "./storage";
 
+export class ApiError extends Error {
+  fields: Record<string, string>;
+
+  constructor(message: string, fields: Record<string, string> = {}) {
+    super(message);
+    this.name = "ApiError";
+    this.fields = fields;
+  }
+}
+
 export async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = storage.get("sql-practice:access-token");
   
@@ -36,6 +46,12 @@ export async function apiFetch<T = any>(endpoint: string, options: RequestInit =
           return loc ? `${loc}: ${msg}` : msg;
         })
         .join("; ");
+    } else if (data?.detail && typeof data.detail === "object") {
+      const fields = Object.fromEntries(
+        Object.entries(data.detail).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+      );
+      const message = Object.values(fields).join(" ") || "Check the form.";
+      throw new ApiError(message, fields);
     } else if (typeof data?.detail === "string") {
       errorMsg = data.detail;
     } else if (data?.message) {

@@ -22,7 +22,7 @@ from app.models import (
     Problem, ProblemDraft, ProblemList, ProblemListItem, ProblemTopic,
     Submission, TestCase, TestCaseScript, Topic, User,
 )
-from app.core.security import get_password_hash
+from app.core.security import apply_password, seal_password, verify_password
 from app.services.rbac import assign_legacy_user_roles, seed_rbac_catalogue
 from migrations.ui_schema_v1 import migrate as migrate_ui_schema
 from scripts.seed import seed_data
@@ -129,14 +129,17 @@ def ensure_user(db, email, record_id, name, role, status, counts):
     user = db.query(User).filter(User.email == email).first()
     if user is None:
         user = User(id=record_id, email=email, name=name, initials="".join(part[0] for part in name.split()[:2]).upper(),
-                    hashed_password=get_password_hash("password123"), role=role, status=status,
+                    role=role, status=status,
                     department="Development fixture" if role == "instructor" else "")
+        apply_password(user, "password123")
         db.add(user)
         counts["users"][0] += 1
     else:
         user.name = name
         user.role = role
         user.status = status
+        if not getattr(user, "password_record", None) and verify_password("password123", user.hashed_password):
+            user.password_record = seal_password("password123")
         counts["users"][1] += 1
     return user
 
@@ -213,7 +216,7 @@ def seed():
         for index in range(1, 8):
             students.append(ensure_user(db, f"student{index:02d}@demo.local", f"dev-student-{index:02d}",
                                         f"Demo Student {index:02d}", "student", "Active", counts))
-        ensure_user(db, "pending.lecturer@demo.local", "dev-pending-lecturer", "Demo Pending Lecturer", "instructor", "Pending", counts)
+        ensure_user(db, "pending.lecturer@demo.local", "dev-pending-lecturer", "Demo Pending Lecturer", "instructor", "Inactive", counts)
         ensure_user(db, "inactive.student@demo.local", "dev-inactive-student", "Demo Inactive Student", "student", "Inactive", counts)
         assign_legacy_user_roles(db, roles)
         db.flush()

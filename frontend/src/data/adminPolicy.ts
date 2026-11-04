@@ -1,10 +1,3 @@
-export type AdminLecturerRequest = {
-    name: string;
-    email: string;
-    department: string;
-    submitted: string;
-};
-
 export type AdminClass = {
     course: string;
     id: string;

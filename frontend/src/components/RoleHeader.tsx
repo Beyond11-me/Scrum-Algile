@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, List, LogOut, Moon, Sun } from "lucide-react";
+import { ChevronLeft, ChevronRight, List, LogOut, Moon, Sun, UserRound } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { APP_NAME } from "../data/models";
@@ -56,7 +56,7 @@ export function RoleHeader({ role, workspace }: { role: Role; workspace?: Worksp
   useEffect(() => { setMenuOpen(false); setAccountOpen(false); setNotificationsOpen(false); setStreakOpen(false); }, [location.pathname]);
   useEffect(() => {
     if (!accountOpen) return;
-    accountRef.current?.querySelector<HTMLButtonElement>("#role-account-menu button")?.focus();
+    accountRef.current?.querySelector<HTMLElement>("#role-account-menu a, #role-account-menu button")?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") { setAccountOpen(false); accountButton.current?.focus(); }
     };
@@ -186,7 +186,9 @@ export function RoleHeader({ role, workspace }: { role: Role; workspace?: Worksp
         <span className="avatar">{session?.initials || "?"}</span><span className="account-identity"><b>{session?.name || "Account"}</b><small>{role === "teacher" ? "Lecturer" : role === "admin" ? "Admin" : "Student"}</small></span>
       </button>
       {accountOpen && <div id="role-account-menu" className="role-account-menu" role="region" aria-label="Account settings">
-        <b>{session?.name || "Account"}</b><small className="muted">Appearance</small>
+        <div className="role-account-menu-head"><b>{session?.name || "Account"}</b><small>{session?.email}</small></div>
+        <Link to={role === "admin" ? "/admin/account" : role === "teacher" ? "/teacher/account" : "/account"} onClick={() => setAccountOpen(false)}><UserRound size={16} /> Account</Link>
+        <small className="muted">Appearance</small>
         <button type="button" aria-pressed={!dark} onClick={() => setTheme("light")}><Sun size={16} /> Light mode</button>
         <button type="button" aria-pressed={dark} onClick={() => setTheme("dark")}><Moon size={16} /> Dark mode</button>
         <button type="button" onClick={() => { logout(); navigate("/login", { replace: true }); }}><LogOut size={16} /> Log out</button>

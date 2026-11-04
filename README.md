@@ -140,6 +140,13 @@ You need Docker Desktop (Linux containers, Docker Compose) and enough resources 
 
    It is deliberately blocked unless the database is named `SQLUIT` and the target is LocalDB or the explicit `ALLOW_DEV_SEED=1` flag is present. Do not set that flag for shared or production databases.
 
+   On a database that already exists, run the account-management migrations once before using profile changes or the admin password view. `account_management_v2` prints the email of any older account that received a new generated password:
+
+   ```bash
+   docker compose exec backend python -m migrations.account_management_v1
+   docker compose exec backend python -m migrations.account_management_v2
+   ```
+
 Useful commands:
 
 - `docker compose logs -f`: follow the logs.

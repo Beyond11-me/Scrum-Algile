@@ -5,10 +5,11 @@ export interface AdminUser {
   name: string;
   email: string;
   role: "Student" | "Lecturer" | "Admin" | string;
-  status: "Active" | "Inactive" | "Pending" | string;
+  status: "Active" | "Inactive" | string;
   lastActive: string;
   joined: string;
   detail: string;
+  password?: string;
 }
 
 export type LecturerOption = {
@@ -29,10 +30,30 @@ export const adminService = {
     });
   },
 
-  async createUser(data: any): Promise<AdminUser> {
+  async createUser(data: { name: string; email: string; role: string; password: string }): Promise<AdminUser> {
     return apiFetch("/api/admin/users", {
       method: "POST",
       body: JSON.stringify(data),
+    });
+  },
+
+  async importUsers(file: File): Promise<{ created: number; duplicates: number; invalid: number; reportCsv: string }> {
+    const body = new FormData();
+    body.append("file", file);
+    return apiFetch("/api/admin/users/import", { method: "POST", body });
+  },
+
+  async resetPassword(email: string, body: { password?: string; generate?: boolean }): Promise<{ password?: string; message?: string }> {
+    return apiFetch(`/api/admin/users/${encodeURIComponent(email)}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  async deleteUser(email: string, confirmEmail: string): Promise<{ message: string }> {
+    return apiFetch(`/api/admin/users/${encodeURIComponent(email)}`, {
+      method: "DELETE",
+      body: JSON.stringify({ confirmEmail }),
     });
   },
 
@@ -56,22 +77,6 @@ export const adminService = {
 
   async getLecturers(): Promise<LecturerOption[]> {
     return apiFetch("/api/admin/classes/lecturers");
-  },
-
-  async getLecturerRequests(): Promise<any[]> {
-    return apiFetch("/api/admin/users/lecturer-requests");
-  },
-
-  async approveLecturerRequest(id: string): Promise<any> {
-    return apiFetch(`/api/admin/users/lecturer-requests/${encodeURIComponent(id)}/approve`, {
-      method: "POST"
-    });
-  },
-
-  async rejectLecturerRequest(id: string): Promise<any> {
-    return apiFetch(`/api/admin/users/lecturer-requests/${encodeURIComponent(id)}/reject`, {
-      method: "POST"
-    });
   },
 
   async getOverviewStats(): Promise<any> {

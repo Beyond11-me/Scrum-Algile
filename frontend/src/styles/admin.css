@@ -257,6 +257,242 @@
     justify-content: center;
 }
 
+.admin-users-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 12px 16px;
+}
+
+.admin-users-toolbar > .admin-user-filters {
+    grid-column: 1 / -1;
+}
+
+.admin-users-heading h1 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 30px;
+}
+
+.admin-users-heading p {
+    margin: 2px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.admin-users-page .admin-user-filters {
+    grid-template-columns: minmax(180px, 1.6fr) repeat(2, minmax(140px, 0.7fr));
+}
+
+.admin-users-page .admin-user-actions {
+    width: auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    white-space: normal;
+}
+
+.admin-users-page .admin-user-actions .admin-button {
+    flex: 0 0 auto;
+    min-width: max-content;
+    white-space: nowrap;
+}
+
+.admin-csv-group {
+    display: inline-flex;
+    align-items: stretch;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+}
+
+.admin-csv-group > span {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 10px;
+    border-right: 1px solid var(--border);
+    background: var(--subtle);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.admin-csv-group .admin-button {
+    border: 0;
+    border-radius: 0;
+    border-right: 1px solid var(--border);
+    background: transparent;
+}
+
+.admin-csv-group .admin-button:last-child {
+    border-right: 0;
+}
+
+.admin-csv-group .admin-button:hover:not(:disabled) {
+    background: var(--accent-subtle);
+    color: var(--accent);
+}
+
+.admin-users-page .admin-primary {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+}
+
+.account-secret {
+    display: grid;
+    gap: 6px;
+    margin-top: 14px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--subtle);
+}
+
+.account-secret > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.account-secret span,
+.account-secret small {
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 16px;
+}
+
+.account-secret code {
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 20px;
+    word-break: break-all;
+}
+
+.admin-users-page .admin-button-stack {
+    align-items: stretch;
+}
+
+.admin-users-page .admin-button-stack .button {
+    width: 100%;
+    justify-content: center;
+}
+
+.admin-remove-dialog {
+    overflow-x: hidden;
+}
+
+.admin-remove-dialog .admin-dialog-form > p {
+    overflow-wrap: anywhere;
+}
+
+.admin-confirm-check {
+    display: grid;
+    grid-template-columns: 14px minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+    width: 100%;
+    color: var(--danger);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+    cursor: pointer;
+}
+
+.admin-confirm-check input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    min-width: 0;
+    min-height: 0;
+    margin: 1px 0 0;
+    padding: 0;
+    accent-color: var(--danger);
+}
+
+.self-account-page {
+    display: grid;
+    place-items: start center;
+    min-height: calc(100dvh - var(--header-height));
+    padding: 32px 16px 56px;
+    background: var(--canvas);
+}
+
+.self-account-card {
+    width: min(100%, 440px);
+    padding: 28px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+}
+
+.self-account-card h1 {
+    margin: 0 0 6px;
+    font-size: 22px;
+    line-height: 1.25;
+}
+
+.self-account-card header p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.self-account-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
+.self-account-section h2 {
+    margin: 0 0 12px;
+    font-size: 15px;
+    line-height: 22px;
+}
+
+.self-account-section .admin-field + .admin-field {
+    margin-top: 14px;
+}
+
+.self-account-hint {
+    margin: 8px 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.self-account-card .admin-edit-actions .button {
+    width: 100%;
+}
+
+@media (max-width: 760px) {
+    .admin-users-toolbar {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-users-page .admin-user-actions {
+        justify-content: flex-start;
+    }
+
+    .admin-users-page .admin-user-filters {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-csv-group {
+        width: 100%;
+    }
+
+    .admin-csv-group .admin-button {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+}
+
 .admin-field {
     min-width: 0;
     display: flex;
