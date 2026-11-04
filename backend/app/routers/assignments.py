@@ -12,7 +12,7 @@ import re
 
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
-from app.models import User, Assignment, AssignmentClass, AssignmentProblem, Class, ClassEnrollment
+from app.models import User, Assignment, AssignmentClass, AssignmentProblem, Class, ClassEnrollment, Problem
 from app.schemas import AssignmentCreate, AssignmentResponse
 
 router = APIRouter(
@@ -90,6 +90,8 @@ def get_contest_banner(filename: str):
 
 def validate_assignment_classes(assignment: AssignmentCreate, db: Session, current_user: User):
     validate_banner_fields(assignment)
+    if not assignment.is_contest and not 3 <= len(assignment.title.strip()) <= 100:
+        raise HTTPException(status_code=400, detail="Vui lòng nhập tên Lab (3–100 ký tự).")
     if assignment.published and (not assignment.problems or
                                  (assignment.audience_type == "classes" and not assignment.class_ids)):
         raise HTTPException(status_code=400, detail="Published activities need an audience and at least one problem.")
@@ -98,18 +100,22 @@ def validate_assignment_classes(assignment: AssignmentCreate, db: Session, curre
     )):
         raise HTTPException(status_code=400, detail="Published contests need a short description, description, and rules.")
     if assignment.opens >= assignment.closes:
-        raise HTTPException(status_code=400, detail="End time must be after start time.")
+        detail = "End time must be after start time." if assignment.is_contest else "Deadline phải sau giờ mở."
+        raise HTTPException(status_code=400, detail=detail)
     if assignment.is_contest and assignment.audience_type == "all_students" and assignment.class_ids:
         raise HTTPException(status_code=400, detail="All-students contests cannot select classes.")
     if len(set(assignment.class_ids)) != len(assignment.class_ids):
         raise HTTPException(status_code=400, detail="Each class can be selected only once.")
-    if not assignment.class_ids:
-        return
-    query = db.query(Class.id).filter(Class.id.in_(assignment.class_ids), Class.status == "Active")
-    if current_user.role == "instructor":
-        query = query.filter(Class.instructor_id == current_user.id)
-    if query.count() != len(assignment.class_ids):
-        raise HTTPException(status_code=400, detail="One or more selected classes are unavailable.")
+    if assignment.class_ids:
+        query = db.query(Class.id).filter(Class.id.in_(assignment.class_ids), Class.status == "Active")
+        if current_user.role == "instructor":
+            query = query.filter(Class.instructor_id == current_user.id)
+        if query.count() != len(assignment.class_ids):
+            detail = "One or more selected classes are unavailable." if assignment.is_contest else "Lớp không khả dụng."
+            raise HTTPException(status_code=400, detail=detail)
+    problem_ids = {problem.id for problem in assignment.problems}
+    if problem_ids and db.query(Problem.id).filter(Problem.id.in_(problem_ids)).count() != len(problem_ids):
+        raise HTTPException(status_code=400, detail="Câu hỏi không tồn tại hoặc không khả dụng.")
 
 
 def eligible_student_ids(db: Session, audience_type: str, class_ids: List[str]) -> List[str]:

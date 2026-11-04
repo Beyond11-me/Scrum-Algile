@@ -1,7 +1,8 @@
 from pydantic import BaseModel, EmailStr, ConfigDict, Field, model_validator, field_validator
 from pydantic.alias_generators import to_camel
+from fastapi import HTTPException
 from typing import Optional, List, Dict, Any, Literal
-from datetime import datetime
+from datetime import datetime, timezone
 
 # ========================
 # Pydantic models cho User
@@ -392,6 +393,23 @@ class AssignmentCreate(CamelModel):
     problems: List[BuilderProblem]
     student_options: StudentOptions = Field(..., alias="studentOptions")
     published: bool
+
+    @field_validator("opens", "closes")
+    @classmethod
+    def normalize_schedule_to_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is not None and value.utcoffset() is not None:
+            return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value
+
+    @field_validator("problems", mode="before")
+    @classmethod
+    def validate_lab_points(cls, value, info):
+        if not info.data.get("is_contest", False) and isinstance(value, list):
+            for problem in value:
+                points = problem.get("points") if isinstance(problem, dict) else getattr(problem, "points", None)
+                if type(points) is not int or not 1 <= points <= 100:
+                    raise HTTPException(status_code=400, detail="Điểm phải là số nguyên từ 1 đến 100.")
+        return value
 
     @model_validator(mode="after")
     def validate_activity_kind(self):
