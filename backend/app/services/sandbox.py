@@ -15,13 +15,13 @@ def rewrite_query(query: str) -> str:
     try:
         parsed = sqlglot.parse_one(query, read="tsql")
     except Exception as e:
-        raise SandboxError(f"Lỗi cú pháp SQL: {str(e)}")
+        raise SandboxError(f"SQL syntax error: {str(e)}")
 
     # Chặn các lệnh nguy hiểm (Chỉ cho phép SELECT, CTE)
     forbidden = (exp.Drop, exp.Alter, exp.Delete, exp.Update, exp.Insert, exp.Command, exp.Commit, exp.Rollback)
     for node in parsed.walk():
         if isinstance(node, forbidden):
-            raise SandboxError(f"Không được phép sử dụng lệnh: {type(node).__name__.upper()}")
+            raise SandboxError(f"This statement is not allowed: {type(node).__name__.upper()}")
             
     # Tìm tất cả các bảng và thêm tiền tố #
     for table in parsed.find_all(exp.Table):
@@ -101,7 +101,7 @@ def execute_query(db: Session, rewritten_query: str) -> Dict[str, Any]:
     except concurrent.futures.TimeoutError:
         raise SandboxError("TIME_LIMIT_EXCEEDED")
     except Exception as e:
-        raise SandboxError(f"Lỗi thực thi SQL: {str(e)}")
+        raise SandboxError(f"SQL execution error: {str(e)}")
 
 def compare_results(actual: Dict[str, Any], expected: Dict[str, Any]) -> Tuple[bool, str]:
     """ So sánh kết quả thực thi với đáp án """
@@ -109,16 +109,16 @@ def compare_results(actual: Dict[str, Any], expected: Dict[str, Any]) -> Tuple[b
     exp_cols = [str(c).lower() for c in expected.get("columns", [])]
     
     if len(act_cols) != len(exp_cols):
-        return False, f"Số lượng cột không khớp. Trả về {len(act_cols)} cột, mong đợi {len(exp_cols)} cột."
+        return False, f"Column count does not match. Returned {len(act_cols)}, expected {len(exp_cols)}."
         
     if act_cols != exp_cols:
-        return False, "Tên cột hoặc thứ tự cột không khớp với đáp án."
+        return False, "Column names or column order do not match the expected result."
         
     act_rows = actual.get("rows", [])
     exp_rows = expected.get("rows", [])
     
     if len(act_rows) != len(exp_rows):
-        return False, f"Số lượng dòng không khớp. Trả về {len(act_rows)} dòng, mong đợi {len(exp_rows)} dòng."
+        return False, f"Row count does not match. Returned {len(act_rows)}, expected {len(exp_rows)}."
         
     def normalize_row(row):
         return tuple(str(x) if x is not None else "" for x in row)
@@ -128,16 +128,16 @@ def compare_results(actual: Dict[str, Any], expected: Dict[str, Any]) -> Tuple[b
     
     for i in range(len(act_normalized)):
         if act_normalized[i] != exp_normalized[i]:
-            return False, "Dữ liệu không khớp sau khi đối chiếu (Sai khác ở dữ liệu hoặc tập hợp dòng)."
+            return False, "The returned data does not match the expected result."
             
-    return True, "Chính xác hoàn toàn!"
+    return True, "Exact match."
 
 def rewrite_setup_script(script: str) -> str:
     if not script or not script.strip(): return ""
     try:
         statements = sqlglot.parse(script, read="tsql")
     except Exception as e:
-        raise SandboxError(f"Lỗi cú pháp SQL trong setup: {str(e)}")
+        raise SandboxError(f"SQL syntax error in setup: {str(e)}")
 
     forbidden = (exp.Drop, exp.Alter, exp.Delete, exp.Update, exp.Command, exp.Commit, exp.Rollback)
     
@@ -146,7 +146,7 @@ def rewrite_setup_script(script: str) -> str:
         if not parsed: continue
         for node in parsed.walk():
             if isinstance(node, forbidden):
-                raise SandboxError(f"Không được phép: {type(node).__name__.upper()} trong setup")
+                raise SandboxError(f"Not allowed in setup: {type(node).__name__.upper()}")
                 
         for table in parsed.find_all(exp.Table):
             if table.name and not table.name.startswith("#"):
@@ -194,7 +194,13 @@ def run_validate_sandbox(db: Session, schema_sql: str, seed_data: str, query: st
     except Exception as e:
         return {"status": "Error", "message": f"Validation failed: {str(e)}"}
 
+def _is_hidden_case(tc: Any) -> bool:
+    return bool(tc.get('is_hidden', False) if isinstance(tc, dict) else getattr(tc, 'is_hidden', False))
+
+
 def run_sandbox(db: Session, problem: Problem, query: str, is_submit: bool, allow_hidden: bool = True) -> Dict[str, Any]:
+    # Returned by runs only, and never for a hidden test case.
+    sample_expected = None
     try:
         rewritten_query = rewrite_query(query)
         
@@ -215,13 +221,13 @@ def run_sandbox(db: Session, problem: Problem, query: str, is_submit: bool, allo
             elif problem.tables and problem.expected:
                 test_cases = [{"tables": problem.tables, "expected": problem.expected, "is_hidden": False}]
             else:
-                raise SandboxError("Bài tập chưa có dữ liệu test case.")
+                raise SandboxError("This problem has no test case data yet.")
 
         if not is_submit:
-            visible_cases = [tc for tc in test_cases if (tc.get('is_hidden', False) if isinstance(tc, dict) else getattr(tc, 'is_hidden', False)) == False]
+            visible_cases = [tc for tc in test_cases if not _is_hidden_case(tc)]
             if not visible_cases:
                 if not allow_hidden:
-                    raise SandboxError("Bài tập không có test công khai để chạy thử.")
+                    raise SandboxError("This problem has no public test case to run.")
                 visible_cases = [test_cases[0]]
             test_cases_to_run = visible_cases[:1]
         else:
@@ -239,13 +245,16 @@ def run_sandbox(db: Session, problem: Problem, query: str, is_submit: bool, allo
             else:
                 script_obj = getattr(tc, 'scripts', None)[0] if getattr(tc, 'scripts', None) else None
                 if not script_obj:
-                    raise SandboxError(f"Test case {tc.id} thiếu script.")
+                    raise SandboxError(f"Test case {tc.id} has no script.")
                 seed_sandbox_data_scripts(db, script_obj.create_script, script_obj.insert_script)
                 
                 # We need to run expected_query to get expected results
                 rewritten_expected = rewrite_query(tc.expected_query)
                 expected = execute_query(db, rewritten_expected)
-            
+
+            if not is_submit and not _is_hidden_case(tc):
+                sample_expected = expected
+
             actual_result = execute_query(db, rewritten_query)
             last_table = actual_result
             
@@ -255,21 +264,22 @@ def run_sandbox(db: Session, problem: Problem, query: str, is_submit: bool, allo
             else:
                 if not first_error_msg:
                     status_str = "Wrong Answer" if is_submit else "Tabular result"
-                    msg_prefix = f"Test case {idx + 1} sai: " if len(test_cases) > 1 and is_submit else ""
-                    first_error_msg = msg_prefix + msg if is_submit else "Chạy thử thành công nhưng kết quả khác đáp án."
+                    msg_prefix = f"Test case {idx + 1} failed: " if len(test_cases) > 1 and is_submit else ""
+                    first_error_msg = msg_prefix + msg if is_submit else "Query ran, but the result differs from the expected result."
                 
                 if not is_submit:
                     return {
                         "status": status_str,
                         "message": first_error_msg,
-                        "table": actual_result
+                        "table": actual_result,
+                        "expected": sample_expected
                     }
 
         if is_submit:
             if passed_count == total_cases:
                 return {
                     "status": "Accepted",
-                    "message": "Chúc mừng! Đáp án chính xác tất cả test cases.",
+                    "message": "Correct! Your query passed all test cases.",
                     "table": last_table,
                     "passed": passed_count,
                     "total": total_cases
@@ -277,7 +287,7 @@ def run_sandbox(db: Session, problem: Problem, query: str, is_submit: bool, allo
             else:
                 return {
                     "status": "Partial" if passed_count > 0 else "Wrong Answer",
-                    "message": first_error_msg or "Kết quả không khớp với đáp án.",
+                    "message": first_error_msg or "The result does not match the expected result.",
                     "table": last_table,
                     "passed": passed_count,
                     "total": total_cases
@@ -285,13 +295,14 @@ def run_sandbox(db: Session, problem: Problem, query: str, is_submit: bool, allo
         else:
             return {
                 "status": "Tabular result",
-                "message": "Chạy thử thành công.",
-                "table": last_table
+                "message": "Query ran successfully.",
+                "table": last_table,
+                "expected": sample_expected
             }
-            
+
     except SandboxError as e:
         if "TIME_LIMIT_EXCEEDED" in str(e):
-            return {"status": "Time Limit Exceeded", "message": "Truy vấn chạy quá thời gian cho phép (5s)."}
-        return {"status": "Runtime Error", "message": str(e)}
+            return {"status": "Time Limit Exceeded", "message": "The query exceeded the 5 second time limit.", "expected": sample_expected}
+        return {"status": "Runtime Error", "message": str(e), "expected": sample_expected}
     except Exception as e:
-        return {"status": "Runtime Error", "message": f"Lỗi hệ thống không xác định: {str(e)}"}
+        return {"status": "Runtime Error", "message": f"Unexpected system error: {str(e)}", "expected": sample_expected}

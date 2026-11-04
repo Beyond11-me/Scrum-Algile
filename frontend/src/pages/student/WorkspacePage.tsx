@@ -178,8 +178,10 @@ function Workspace({ problem }: { problem: Problem }) {
   // Shown read-only over the editor, which stays mounted so the draft and its undo history survive.
   const [viewedSubmission, setViewedSubmission] = useState<Submission | null>(null);
   const [viewedSql, setViewedSql] = useState("");
+  const [viewedOutput, setViewedOutput] = useState<{ loading: boolean; value: QueryResult | null; error: string }>({ loading: false, value: null, error: "" });
   const [problemTab, setProblemTab] = useState("Description");
   const [resultTab, setResultTab] = useState("Result");
+  const submissionPanel = problemTab === "Submissions";
   const [mobileTab, setMobileTab] = useState("Problem");
   const [hintOpen, setHintOpen] = useState(false);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
@@ -252,6 +254,20 @@ function Workspace({ problem }: { problem: Problem }) {
     if (query) formatSql(query, viewedSubmission?.database).then((formatted) => { if (active) setViewedSql(formatted); }).catch(() => undefined);
     return () => { active = false; };
   }, [viewedSubmission]);
+  useEffect(() => {
+    const query = viewedSubmission?.query;
+    if (!query) {
+      setViewedOutput({ loading: false, value: null, error: "" });
+      return;
+    }
+    let active = true;
+    setViewedOutput({ loading: true, value: null, error: "" });
+    // Results are not stored with a submission, so run it again. Running creates no new submission.
+    studentApi.runQuery(problem.id, query, "SQL Server", source, context)
+      .then((value) => { if (active) setViewedOutput({ loading: false, value, error: "" }); })
+      .catch((error) => { if (active) setViewedOutput({ loading: false, value: null, error: error instanceof Error ? error.message : "The SQL runner is unavailable. Try again." }); });
+    return () => { active = false; };
+  }, [viewedSubmission, problem.id, source, context]);
   function viewSubmission(submission: Submission) {
     setViewedSubmission(submission);
     setMobileTab("SQL");
@@ -283,6 +299,8 @@ function Workspace({ problem }: { problem: Problem }) {
     setNotice("");
     setResultTab("Result");
     setMobileTab("Result");
+    // The Submissions tab replaces the Result pane, so leave it to show this run.
+    if (submissionPanel) setProblemTab("Description");
     try {
       const value =
         kind === "submit"
@@ -457,7 +475,11 @@ function Workspace({ problem }: { problem: Problem }) {
                   role="tab"
                   aria-selected={problemTab === t}
                   className={problemTab === t ? "active" : ""}
-                  onClick={() => setProblemTab(t)}
+                  onClick={() => {
+                    setProblemTab(t);
+                    // A submission is only viewed from its tab; elsewhere the editor is the draft again.
+                    if (t !== "Submissions") setViewedSubmission(null);
+                  }}
                 >
                   {t}
                 </button>
@@ -845,27 +867,60 @@ function Workspace({ problem }: { problem: Problem }) {
             >
               <div className="pane-tabs result-tabs">
                 <div role="tablist" aria-label="Execution output">
-                  {["Result", ...(problem.expected ? ["Expected output"] : [])].map((t) => (
-                    <button
-                      key={t}
-                      role="tab"
-                      aria-selected={resultTab === t}
-                      className={resultTab === t ? "active" : ""}
-                      onClick={() => setResultTab(t)}
-                    >
-                      {t}
-                    </button>
-                  ))}
+                  {(submissionPanel ? ["Submission"] : ["Result", ...(problem.expected ? ["Expected output"] : [])]).map((t) => {
+                    const active = submissionPanel || resultTab === t;
+                    return (
+                      <button
+                        key={t}
+                        role="tab"
+                        aria-selected={active}
+                        className={active ? "active" : ""}
+                        onClick={() => { if (!submissionPanel) setResultTab(t); }}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
                 </div>
-                {resultTab === "Result" && rowCount !== undefined && !busy && (
+                {!submissionPanel && resultTab === "Result" && rowCount !== undefined && !busy && (
                   <span className="result-meta">{rowCount} {rowCount === 1 ? "row" : "rows"}</span>
                 )}
               </div>
               <div
-                className={"result-scroll" + (resultTab === "Result" && !display && !busy ? " idle" : "")}
+                className={"result-scroll" + ((submissionPanel ? !viewedSubmission : resultTab === "Result" && !display && !busy) ? " idle" : "")}
                 aria-live="polite"
               >
-                {resultTab === "Expected output" ? (
+                {submissionPanel ? (
+                  viewedSubmission ? (
+                    viewedOutput.loading ? (
+                      <Loading label="Running this submission…" />
+                    ) : (
+                      <>
+                        <p className="result-message">Re-run on the sample data. Grading may also use hidden test cases.</p>
+                        <div className="submission-output">
+                          <section aria-label="Query result">
+                            <h3>Query result</h3>
+                            {viewedOutput.value?.table
+                              ? <DataGrid table={{ ...viewedOutput.value.table, name: "Query result" }} />
+                              : <p className="result-error">{viewedOutput.value?.message || viewedOutput.error || "SQL snapshot is unavailable for this submission."}</p>}
+                          </section>
+                          <section aria-label="Expected result">
+                            <h3>Expected result</h3>
+                            {viewedOutput.value?.expected
+                              ? <DataGrid table={{ ...viewedOutput.value.expected, name: "Expected result" }} />
+                              : <p className="result-message">No expected result is available to show.</p>}
+                          </section>
+                        </div>
+                      </>
+                    )
+                  ) : (
+                    <div className="workspace-placeholder">
+                      <Database size={28} aria-hidden="true" />
+                      <p>{submissions.data?.length ? "Select a submission" : "No submission to show"}</p>
+                      <small>{submissions.data?.length ? "Its query result and the expected result appear here." : "Submit your query to see its result here."}</small>
+                    </div>
+                  )
+                ) : resultTab === "Expected output" ? (
                   problem.expected
                     ? <DataGrid table={problem.expected} />
                     : <p className="muted">No expected output for this problem.</p>
