@@ -19,6 +19,7 @@ export type Problem = {
   number: string;
   title: string;
   topic: string;
+  topics?: string[];
   difficulty: "Easy" | "Medium" | "Hard";
   progress: Progress;
   description: string;

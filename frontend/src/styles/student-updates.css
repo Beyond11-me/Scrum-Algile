@@ -936,7 +936,7 @@ body:has(.practice-page) {
   background-position: center;
 }
 .contest-detail-banner.has-image { aspect-ratio: 3/1; min-height: 240px; color: #fff; }
-.contest-detail-banner.has-image small { color: #e3e4ff; }
+.contest-detail-banner.has-image small { color: #dbe6ff; }
 .contest-detail-banner.has-image > * { position: relative; z-index: 1; }
 .contest-detail-banner .button:disabled { opacity: 1; cursor: default; }
 .contest-detail-banner h1 {

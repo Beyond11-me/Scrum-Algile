@@ -771,15 +771,15 @@ body:has(.compact-tables-page) { overflow: hidden; }
 .teacher-sql-editor-dialog > .section-heading { gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
 .teacher-sql-editor-actions { display: flex; gap: 8px; margin-left: auto; }
 .teacher-sql-popup-codemirror { overflow: hidden; border: 1px solid var(--border); border-radius: 8px; }
-.teacher-sql-popup-codemirror .cm-editor { background: #f0f0f8; font-size: 14px; }
+.teacher-sql-popup-codemirror .cm-editor { background: var(--subtle); font-size: 14px; }
 .teacher-sql-popup-codemirror .cm-scroller { font-family: inherit; }
-.teacher-sql-popup-codemirror .cm-gutters { background: #e8e8f3; color: var(--muted); border-right: 1px solid var(--border); }
+.teacher-sql-popup-codemirror .cm-gutters { background: var(--canvas); color: var(--muted); border-right: 1px solid var(--border); }
 
 .teacher-sql-inline-preview { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; cursor: pointer; }
-.teacher-sql-inline-preview .cm-editor { background: #f0f0f8; font-size: 12px; }
+.teacher-sql-inline-preview .cm-editor { background: var(--subtle); font-size: 12px; }
 .teacher-sql-inline-preview .cm-scroller { font-family: inherit; }
 .teacher-sql-inline-preview .cm-content { cursor: pointer; }
-.teacher-sql-inline-preview .cm-gutters { background: #e8e8f3; color: var(--muted); border-right: 1px solid var(--border); }
+.teacher-sql-inline-preview .cm-gutters { background: var(--canvas); color: var(--muted); border-right: 1px solid var(--border); }
 .teacher-sql-inline-preview:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .teacher-schema-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }

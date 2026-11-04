@@ -4,54 +4,54 @@
   color-scheme: light;
   --student-sidebar-width: 320px;
 
-  /* Semantic Color Tokens (Light) */
-  --canvas: #f7f7fc;
+  /* Semantic Color Tokens (Light) — neutrals follow Dify's light palette, accent is Dify blue */
+  --canvas: #f2f4f7;
   --surface: #ffffff;
-  --subtle: #f0f1f9;
-  --text-primary: #171831;
+  --subtle: #eef0f4;
+  --text-primary: #101828;
   --text: var(--text-primary);
-  --text-secondary: #626981;
+  --text-secondary: #676f83;
   --muted: var(--text-secondary);
-  --border-default: #dce0ed;
+  --border-default: #dfe3e8;
   --border: var(--border-default);
-  --border-subtle: #eceefa;
-  --brand-primary: #4f46c8;
+  --border-subtle: #eceef2;
+  --brand-primary: #155aef;
   --accent: var(--brand-primary);
-  --accent-subtle: #efedff;
+  --accent-subtle: #eff4ff;
   --on-accent: #ffffff;
   --brand-mint: #a6ffe9;
-  --brand-night: #171942;
-  --success: #1f883d;
-  --warning: #9a6700;
-  --danger: #cf222e;
+  --brand-night: #0b1a3d;
+  --success: #079455;
+  --warning: #b54708;
+  --danger: #d92d20;
 
   /* State & Feature Colors */
-  --scrollbar-thumb: #7269d9;
-  --scrollbar-track: #eaeaf6;
-  --success-subtle: #daf5df;
-  --warning-subtle: #fff1c2;
-  --danger-subtle: #ffebe9;
-  --selection: #dcd9ff;
-  --backdrop: #0f111580;
+  --scrollbar-thumb: #528bff;
+  --scrollbar-track: #e9ebf0;
+  --success-subtle: #ecfdf3;
+  --warning-subtle: #fffaeb;
+  --danger-subtle: #fef3f2;
+  --selection: #d1e0ff;
+  --backdrop: #10182899;
 
   /* Activity Heatmap & Calendar */
-  --heat-0: #eceefa;
-  --heat-1: #dedbfb;
-  --heat-2: #c1baf4;
-  --heat-3: #9188e7;
+  --heat-0: #eceef2;
+  --heat-1: #d1e0ff;
+  --heat-2: #a4c3ff;
+  --heat-3: #6b9bff;
   --heat-4: var(--brand-primary);
-  --calendar-0: #eff0f8;
-  --calendar-1: #e7e3fb;
-  --calendar-2: #c9c2f6;
-  --calendar-3: #9289e7;
+  --calendar-0: #f2f4f7;
+  --calendar-1: #e0eaff;
+  --calendar-2: #b2ccff;
+  --calendar-3: #6b9bff;
   --calendar-4: var(--brand-primary);
   --calendar-text-0: #667085;
-  --calendar-text-1: #5147be;
-  --calendar-text-2: #30278e;
+  --calendar-text-1: #1d4ed8;
+  --calendar-text-2: #1e3a8a;
   --calendar-text-strong: #ffffff;
 
   /* Feature Gradients & Marks */
-  --feature-0-start: #171942;
+  --feature-0-start: #0b1a3d;
   --feature-0-end: var(--brand-primary);
   --feature-1-start: #083f55;
   --feature-1-end: #078da5;
@@ -103,49 +103,50 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  /* Semantic Color Tokens (Dark) */
-  --canvas: #0e1122;
-  --surface: #171b2e;
-  --subtle: #222740;
-  --text-primary: #f2f3ff;
+  /* Semantic Color Tokens (Dark) — charcoal neutrals from Dify's dark palette */
+  --canvas: #1d1d20;
+  --surface: #222225;
+  --subtle: #2a2a2f;
+  --text-primary: #fbfbfc;
   --text: var(--text-primary);
-  --text-secondary: #a7aec8;
+  --text-secondary: #a3a6b0;
   --muted: var(--text-secondary);
-  --border-default: #363d5a;
+  --border-default: #3a3a40;
   --border: var(--border-default);
-  --border-subtle: #2a3049;
-  --brand-primary: #4f46c8;
-  --accent: #aaa5ff;
-  --accent-subtle: #2b2a54;
-  --on-accent: #14152e;
+  --border-subtle: #2c2c31;
+  --brand-primary: #155aef;
+  --accent: #6694ff;
+  --accent-subtle: #1c2a4a;
+  --on-accent: #0a1530;
   --brand-mint: #a6ffe9;
-  --brand-night: #151735;
-  --success: #3fb950;
-  --warning: #d29922;
-  --danger: #f85149;
+  --brand-night: #0a1733;
+  --success: #47cd89;
+  --warning: #fdb022;
+  --danger: #f97066;
 
   /* State & Feature Colors */
-  --scrollbar-thumb: #aaa5ff;
-  --scrollbar-track: #2a3049;
-  --success-subtle: #173923;
-  --warning-subtle: #403314;
-  --danger-subtle: #432322;
-  --selection: #413c75;
+  --scrollbar-thumb: #6694ff;
+  --scrollbar-track: #2c2c31;
+  --success-subtle: #1e3a2d;
+  --warning-subtle: #3d2f17;
+  --danger-subtle: #3f2627;
+  --selection: #24407a;
+  --backdrop: #18181bcc;
 
   /* Activity Heatmap & Calendar */
-  --heat-0: #222740;
-  --heat-1: #33345a;
-  --heat-2: #4b4981;
-  --heat-3: #7771bd;
-  --heat-4: #aaa5ff;
-  --calendar-0: #242943;
-  --calendar-1: #33345c;
-  --calendar-2: #4a4881;
-  --calendar-3: #7770bc;
-  --calendar-4: #aaa5ff;
+  --heat-0: #2c2c31;
+  --heat-1: #1f2d4f;
+  --heat-2: #28448a;
+  --heat-3: #4a78d6;
+  --heat-4: #6694ff;
+  --calendar-0: #2a2a2f;
+  --calendar-1: #1f2d4f;
+  --calendar-2: #28448a;
+  --calendar-3: #4a78d6;
+  --calendar-4: #6694ff;
   --calendar-text-0: #8f98a8;
-  --calendar-text-1: #b8b9ff;
-  --calendar-text-2: #d5d6ff;
+  --calendar-text-1: #a8c4ff;
+  --calendar-text-2: #d1e0ff;
 }
 
 @media (max-width: 1100px) {
