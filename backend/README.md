@@ -105,6 +105,22 @@ Run the seed script. This will automatically create all necessary tables and ins
 python scripts/seed.py
 ```
 
+**Seed the complete local UI fixture:**
+
+The idempotent development fixture adds classes, assignments, contests, submissions, notifications, saved problems, a saved draft, AI chat history, admin activity, and active/pending/inactive accounts. It runs the normal demo seed first.
+
+```bash
+python -m scripts.seed_dev_data
+```
+
+When the backend runs in Docker Compose, use:
+
+```bash
+docker compose exec -e ALLOW_DEV_SEED=1 backend python -m scripts.seed_dev_data
+```
+
+The Docker command requires the explicit flag and only permits a database named `SQLUIT`; use it only for your local development database.
+
 **Upgrade an existing database to RBAC:**
 
 ```bash
@@ -114,6 +130,14 @@ python -m migrations.rbac_v1
 Run this command before starting a version that uses `users.role_id`. It creates
 the RBAC tables and safely maps the existing `users.role` values. Details are in
 [`migrations/README.md`](migrations/README.md).
+
+**Upgrade an existing database for the current UI:**
+
+```bash
+python -m migrations.ui_schema_v1
+```
+
+The complete development seed runs this UI migration automatically after its local-only safety check.
 
 _This will create two demo accounts you can use to log in:_
 

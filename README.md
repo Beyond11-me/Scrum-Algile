@@ -132,7 +132,13 @@ You need Docker Desktop (Linux containers, Docker Compose) and enough resources 
    docker compose exec backend python -m scripts.seed
    ```
 
-   The extended dataset script `seed_dev_data.py` currently only allows SQL Server LocalDB and does not work with the container.
+   For the complete UI fixture (all three roles, classes, assignments and contests in every state, submissions, notifications, favorites, a draft and AI chat history), run the idempotent development seed instead. It runs the small demo seed first and requires an explicit local-only opt-in when using the Docker SQL Server container:
+
+   ```bash
+   docker compose exec -e ALLOW_DEV_SEED=1 backend python -m scripts.seed_dev_data
+   ```
+
+   It is deliberately blocked unless the database is named `SQLUIT` and the target is LocalDB or the explicit `ALLOW_DEV_SEED=1` flag is present. Do not set that flag for shared or production databases.
 
 Useful commands:
 

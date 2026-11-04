@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from app.db.session import get_db
-from app.models import User, Problem, Submission, TestCase, TestCaseScript, Topic, ProblemTopic, ProblemDraft, Favorite, ProblemListItem, AiChatSession, AiChatMessage, Notification
+from app.models import Assignment, AssignmentClass, AssignmentProblem, ClassEnrollment, User, Problem, Submission, TestCase, TestCaseScript, Topic, ProblemTopic, ProblemDraft, Favorite, ProblemListItem, AiChatSession, AiChatMessage, Notification
 from app.schemas import ProblemListResponse, ProblemDetailResponse, QueryRequest, ProblemCreate, TestCaseCreate, ProblemValidateRequest, TrendingProblem
 from app.dependencies.auth import get_current_user
 from app.services.sandbox import run_sandbox, run_validate_sandbox
@@ -19,11 +19,70 @@ def normalize_topics(value: str | None) -> list[str]:
     return list(dict.fromkeys(topic.strip().upper() for topic in (value or "").split(",") if topic.strip()))
 
 def check_problem_access(db: Session, current_user: User, p: Problem):
-    if p.practice_listed:
+    if p.practice_listed or current_user.role == "admin":
         return True
     if current_user.role == "instructor":
         return True
     return False
+
+
+def require_student_query_access(
+    db: Session,
+    current_user: User,
+    problem: Problem,
+    source: str | None,
+    context: str | None,
+) -> tuple[str, str]:
+    """Validate the source/context sent from the workspace before running SQL.
+
+    A student may practise a public problem, or work on a published and open
+    activity that contains the problem and is assigned to that student.  The
+    same validated values are stored with a submission, so assignment and
+    contest progress remain accurate in the UI.
+    """
+
+    source = source or "Practice"
+    context = context or "Practice"
+    if current_user.status != "Active":
+        raise HTTPException(status_code=403, detail="Only active students can work on problems.")
+
+    if source == "Practice":
+        if context != "Practice" or problem.archived_at is not None or not problem.practice_listed:
+            raise HTTPException(status_code=403, detail="This problem is not available for practice.")
+        return source, context
+
+    if source not in {"Assignments", "Contests"} or context == "Practice":
+        raise HTTPException(status_code=403, detail="Invalid activity context.")
+
+    activity = db.query(Assignment).filter(Assignment.id == context).first()
+    if (
+        activity is None
+        or not activity.published
+        or activity.is_contest != (source == "Contests")
+        or (activity.opens is not None and activity.opens > datetime.datetime.utcnow())
+        or (activity.closes is not None and activity.closes <= datetime.datetime.utcnow())
+    ):
+        raise HTTPException(status_code=403, detail="This activity is not currently available.")
+
+    contains_problem = db.query(AssignmentProblem).filter(
+        AssignmentProblem.assignment_id == activity.id,
+        AssignmentProblem.problem_id == problem.id,
+    ).first()
+    if not contains_problem:
+        raise HTTPException(status_code=403, detail="This problem is not part of the activity.")
+
+    if activity.is_contest and activity.audience_type == "all_students":
+        return source, context
+
+    has_enrollment = db.query(ClassEnrollment).join(
+        AssignmentClass, AssignmentClass.class_id == ClassEnrollment.class_id,
+    ).filter(
+        AssignmentClass.assignment_id == activity.id,
+        ClassEnrollment.student_id == current_user.id,
+    ).first()
+    if not has_enrollment:
+        raise HTTPException(status_code=403, detail="You are not assigned to this activity.")
+    return source, context
 
 @router.get("/trending", response_model=List[TrendingProblem])
 def get_trending(range: str = "Week", db: Session = Depends(get_db)):
@@ -53,6 +112,11 @@ def get_trending(range: str = "Week", db: Session = Depends(get_db)):
 def get_problems(include_archived: bool = False, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.role == "instructor":
         query = owned_problem_query(db, current_user)
+        if not include_archived:
+            query = query.filter(Problem.archived_at.is_(None))
+        problems = query.all()
+    elif current_user.role == "admin":
+        query = db.query(Problem)
         if not include_archived:
             query = query.filter(Problem.archived_at.is_(None))
         problems = query.all()
@@ -114,7 +178,7 @@ def get_problem(problem_id: str, context: Optional[str] = None, db: Session = De
     if current_user.role == "instructor":
         if p.creator_id != current_user.id:
             raise HTTPException(status_code=404, detail="Problem not found")
-    elif not check_problem_access(db, current_user, p) or p.archived_at is not None:
+    elif current_user.role != "admin" and (not check_problem_access(db, current_user, p) or p.archived_at is not None):
         raise HTTPException(status_code=403, detail="You don't have permission to view this problem.")
                 
     subs = db.query(Submission.result).filter(
@@ -333,6 +397,10 @@ def run_query(problem_id: str, request: QueryRequest, db: Session = Depends(get_
     p = db.query(Problem).filter(Problem.id == problem_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="Problem not found")
+    if current_user.role == "student":
+        require_student_query_access(db, current_user, p, request.source, request.context)
+    elif current_user.role not in ("instructor", "admin"):
+        raise HTTPException(status_code=403, detail="You don't have permission to run this problem.")
         
     result = run_sandbox(db, p, request.query, is_submit=False)
     return result
@@ -342,6 +410,12 @@ def submit_query(problem_id: str, request: QueryRequest, db: Session = Depends(g
     p = db.query(Problem).filter(Problem.id == problem_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="Problem not found")
+    source = request.source or "Practice"
+    context = request.context or "Practice"
+    if current_user.role == "student":
+        source, context = require_student_query_access(db, current_user, p, source, context)
+    elif current_user.role not in ("instructor", "admin"):
+        raise HTTPException(status_code=403, detail="You don't have permission to submit this problem.")
         
     max_score = 100
     result = run_sandbox(db, p, request.query, is_submit=True)
@@ -361,8 +435,8 @@ def submit_query(problem_id: str, request: QueryRequest, db: Session = Depends(g
         id=str(uuid.uuid4()),
         user_id=current_user.id,
         problem_id=p.id,
-        source="Practice",
-        context="Practice",
+        source=source,
+        context=context,
         result=status,
         score=score,
         query_text=request.query,

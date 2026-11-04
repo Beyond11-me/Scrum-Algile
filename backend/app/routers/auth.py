@@ -11,13 +11,24 @@ import uuid
 
 router = APIRouter()
 
+
+def require_active_account(user: User) -> None:
+    """Only active accounts may receive a new access token."""
+
+    if (getattr(user, "status", "Active") or "Active").lower() == "active":
+        return
+    if (user.status or "").lower() == "pending":
+        detail = "Tài khoản đang chờ Quản trị viên phê duyệt."
+    else:
+        detail = "Tài khoản của bạn đã bị vô hiệu hóa."
+    raise HTTPException(status_code=403, detail=detail)
+
 @router.post("/token")
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect email or password")
-    if user.status == "Inactive":
-        raise HTTPException(status_code=403, detail="Tài khoản của bạn đã bị vô hiệu hóa.")
+    require_active_account(user)
     token = create_access_token(data={"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
 
@@ -77,8 +88,7 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == login_data.email).first()
     if not user or not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect email or password")
-    if user.status == "Inactive":
-        raise HTTPException(status_code=403, detail="Tài khoản của bạn đã bị vô hiệu hóa.")
+    require_active_account(user)
     token = create_access_token(data={"sub": user.email})
     return {"access_token": token, "token_type": "bearer", "user": user}
 

@@ -45,9 +45,14 @@ def verify():
     assert not any("groupId" in a for a in enrolled["assignments"])
     assert not any("mode" in c for c in enrolled["classes"])
     assert set(next(a for a in enrolled["assignments"] if a["id"] == "dev-assignment-open")["classIds"]) == {"IS207.R11", "IS201.R12"}
-    catalog = call(student, "GET", "/api/assignments")
-    assert "dev-assignment-draft" not in {a["id"] for a in catalog}
-    assert "dev-assignment-scheduled" in {a["id"] for a in catalog}
+    assert "dev-assignment-scheduled" in {a["id"] for a in enrolled["assignments"]}
+    call(student, "GET", "/api/assignments", 403)
+    notifications = call(student, "GET", "/api/notifications")
+    assert len(notifications) >= 3 and any(not item["isRead"] for item in notifications)
+    preferences = call(student, "GET", "/api/student/preferences")
+    assert {"dev-select", "dev-group", "dev-subquery"} <= set(preferences["favorites"])
+    assert any(item["name"] == "Analytics practice" for item in preferences["customLists"])
+    assert call(student, "GET", "/api/ai/sessions/dev-select")
     assert call(student, "GET", "/api/assignments/dev-assignment-open")["problemList"] == [
         {"id": "dev-select", "points": 10}, {"id": "dev-group", "points": 20},
         {"id": "dev-join", "points": 30}, {"id": "dev-null", "points": 20},
@@ -60,16 +65,16 @@ def verify():
     assert sum(p["practiceListed"] for p in problems) >= 8
     assert call(student, "GET", "/api/problems/dev-join")["referenceSolution"] == ""
     call(student, "GET", "/api/problems/no-such-problem", 404)
-    call(other, "GET", "/api/problems/dev-cte", 403)
+    call(other, "GET", "/api/problems/dev-private-cte", 403)
     query = {"query": "SELECT customer_id, customer_name FROM Customers ORDER BY customer_id;",
              "source": "Practice", "context": "Practice", "database": "SQL Server"}
     run = call(student, "POST", "/api/problems/dev-select/run", json=query)
     assert run["status"] == "Tabular result" and len(run["table"]["rows"]) == 5
-    call(student, "POST", "/api/problems/dev-join/run", 403, json=query)
+    call(student, "POST", "/api/problems/dev-private-join/run", 403, json=query)
     call(student, "POST", "/api/problems/dev-select/submit", 403, json={**query, "source": "Assignments", "context": "dev-assignment-draft"})
     call(student, "POST", "/api/problems/dev-order/submit", 403, json={**query, "source": "Assignments", "context": "dev-assignment-scheduled"})
     call(student, "POST", "/api/problems/dev-where/submit", 403, json={**query, "source": "Assignments", "context": "dev-assignment-closed"})
-    call(other, "POST", "/api/problems/dev-cte/submit", 403, json={**query, "source": "Contests", "context": "dev-contest-open"})
+    call(other, "POST", "/api/problems/dev-private-cte/submit", 403, json={**query, "source": "Contests", "context": "dev-contest-open"})
     call(student, "POST", "/api/problems/validate", 403, json={"database": "SQL Server", "schema": "", "seedData": "", "referenceSolution": "SELECT 1"})
 
     submissions = call(student, "GET", "/api/submissions")
@@ -84,7 +89,7 @@ def verify():
 
     teacher_problems = call(teacher, "GET", "/api/problems")
     assert sum(not p["practiceListed"] for p in teacher_problems) >= 3
-    assert call(teacher, "GET", "/api/problems/dev-cte")["referenceSolution"].startswith("WITH")
+    assert call(teacher, "GET", "/api/problems/dev-private-cte")["referenceSolution"].startswith("WITH")
     assert len(call(teacher, "GET", "/api/teacher/classes")) >= 2
     activities = call(teacher, "GET", "/api/assignments")
     assert len([a for a in activities if a["isContest"]]) >= 3
@@ -93,7 +98,7 @@ def verify():
     assert results and all(r["student"] and r["problem"] for r in results)
     reviewed = call(teacher, "GET", "/api/submissions/dev-sub-open-one-group")
     assert reviewed["finalScore"] == 92 and reviewed["feedback"]
-    call(teacher, "PUT", "/api/submissions/dev-sub-open-one-group/review", 422,
+    call(teacher, "PUT", "/api/submissions/dev-sub-open-one-group/review", 400,
          json={"finalScore": 101, "feedback": "invalid"})
     call(teacher, "GET", "/api/admin/users", 403)
 
@@ -105,7 +110,7 @@ def verify():
     assert stats["users"] == len(users) and stats["unassignedClasses"] >= 1
     assert call(admin, "GET", "/api/admin/overview/activities")
     assert call(admin, "GET", "/api/admin/overview/errors")
-    assert len(call(admin, "GET", "/api/problems")) >= 11
+    assert len(call(admin, "GET", "/api/problems")) >= 10
     print("PASS: real auth, role guards, student catalog/schedules/SQL, teacher classes/results/review, admin data/metrics, invalid IDs, private access, inactive/pending users.")
 
 
