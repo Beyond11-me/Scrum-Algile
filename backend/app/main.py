@@ -26,6 +26,13 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=[
+        "Content-Disposition",
+        "X-Roster-Enrolled",
+        "X-Roster-Added",
+        "X-Roster-Not-Found",
+        "X-Roster-Report-Rows",
+    ],
 )
 
 @app.get("/")

@@ -4,10 +4,12 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from fastapi import HTTPException
+
 from app.db.session import Base, SessionLocal, engine
 from app.models import User, Class
 from app.services.rbac import seed_rbac_catalogue
-from app.routers.admin_classes import create_class, ClassCreatePayload
+from app.routers.admin_classes import create_class, update_class, ClassCreatePayload, ClassUpdatePayload
 from app.routers.admin_users import create_admin_user, AdminUserCreate
 from app.routers.admin_overview import get_overview_stats
 
@@ -41,13 +43,16 @@ class TestAdminFeatures(unittest.TestCase):
         payload = ClassCreatePayload(
             id="TEST_CLS_01",
             course="Test DB Course",
-            semester="HK1 2026",
+            semester="Semester 1, 2026",
             lecturerId="Unassigned"
         )
         res = create_class(payload, self.db, self.admin)
         self.assertEqual(res.id, "TEST_CLS_01")
-        self.assertEqual(res.semester, "HK1 2026")
+        self.assertEqual(res.semester, "Semester 1, 2026")
         self.assertEqual(res.lecturer, "Unassigned")
+        self.assertEqual(res.dates, "Unassigned")
+        self.assertIsNone(res.start_date)
+        self.assertIsNone(res.end_date)
 
         # Clean up
         self.db.query(Class).filter(Class.id == "TEST_CLS_01").delete()
@@ -66,6 +71,63 @@ class TestAdminFeatures(unittest.TestCase):
 
         # Clean up
         self.db.query(Class).filter(Class.id == "TEST_CLS_02").delete()
+        self.db.commit()
+
+    def test_create_class_stores_a_valid_date_range(self):
+        payload = ClassCreatePayload(
+            id="TEST_CLS_DATES",
+            course="Scheduled course",
+            semester="Semester 1, 2026",
+            start_date="2026-09-07",
+            end_date="2026-11-28",
+        )
+        res = create_class(payload, self.db, self.admin)
+        self.assertEqual(res.dates, "Sep 07 – Nov 28, 2026")
+        self.assertEqual(res.start_date, "2026-09-07")
+        self.assertEqual(res.end_date, "2026-11-28")
+        self.db.query(Class).filter(Class.id == "TEST_CLS_DATES").delete()
+        self.db.commit()
+
+    def test_create_class_rejects_dates_and_terms_outside_the_window(self):
+        with self.assertRaises(HTTPException) as dates:
+            create_class(ClassCreatePayload(
+                id="TEST_CLS_BAD_DATE",
+                course="Bad dates",
+                semester="Semester 1, 2026",
+                start_date="9999-01-01",
+                end_date="9999-12-31",
+            ), self.db, self.admin)
+        self.assertEqual(dates.exception.status_code, 400)
+        self.assertIn("2026 or 2027", dates.exception.detail)
+
+        with self.assertRaises(HTTPException) as term:
+            create_class(ClassCreatePayload(
+                id="TEST_CLS_BAD_TERM",
+                course="Bad term",
+                semester="Semester 1, 2025",
+            ), self.db, self.admin)
+        self.assertEqual(term.exception.status_code, 400)
+        self.assertIsNone(self.db.query(Class).filter(Class.id == "TEST_CLS_BAD_DATE").first())
+        self.assertIsNone(self.db.query(Class).filter(Class.id == "TEST_CLS_BAD_TERM").first())
+
+    def test_update_class_rejects_an_inverted_date_range(self):
+        create_class(ClassCreatePayload(
+            id="TEST_CLS_EDIT",
+            course="Editable course",
+            semester="Semester 1, 2026",
+            start_date="2026-09-07",
+            end_date="2026-11-28",
+        ), self.db, self.admin)
+        with self.assertRaises(HTTPException) as caught:
+            update_class("TEST_CLS_EDIT", ClassUpdatePayload(
+                start_date="2026-12-01",
+                end_date="2026-09-01",
+            ), self.db, self.admin)
+        self.assertEqual(caught.exception.status_code, 400)
+        stored = self.db.query(Class).filter(Class.id == "TEST_CLS_EDIT").one()
+        self.assertEqual(stored.start_date, "2026-09-07")
+        self.assertEqual(stored.end_date, "2026-11-28")
+        self.db.delete(stored)
         self.db.commit()
 
     def test_create_user(self):

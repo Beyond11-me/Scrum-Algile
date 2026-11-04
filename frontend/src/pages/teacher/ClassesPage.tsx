@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Dialog, ErrorState, Loading } from "../../components/ui";
+import { Search, Upload, X } from "lucide-react";
+import { PersonIdentity, SearchablePersonMenu } from "../../components/SearchablePersonMenu";
 import {
   type TeacherClass,
   type TeacherClassMember,
 } from "../../data/teacherTypes";
 import { TeacherField } from "./TeacherPageParts";
 import { teacherService } from "../../services/teacherService";
+import { downloadCsv, downloadRosterTemplate, rosterImportNotice } from "../../utils/rosterCsv";
 
 export function ClassesPage() {
   const [classes, setClasses] = useState<TeacherClass[]>([]);
@@ -18,10 +21,17 @@ export function ClassesPage() {
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const [studentSearch, setStudentSearch] = useState("");
   const [classDetailsOpen, setClassDetailsOpen] = useState(false);
-  const [detailTab, setDetailTab] = useState<"assignments" | "members">("assignments");
+  const [detailTab, setDetailTab] = useState<"assignments" | "members">("members");
+  const [addSearch, setAddSearch] = useState("");
   const [classActivities, setClassActivities] = useState<any[]>([]);
   const [detailMembers, setDetailMembers] = useState<TeacherClassMember[]>([]);
+  const [allStudents, setAllStudents] = useState<TeacherClassMember[]>([]);
   const [detailError, setDetailError] = useState("");
+  const [membersNotice, setMembersNotice] = useState("");
+  const [memberBusyId, setMemberBusyId] = useState("");
+  const [importing, setImporting] = useState(false);
+  const rosterFileRef = useRef<HTMLInputElement>(null);
+  const pickerShield = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     teacherService.getClasses().then((data) => {
@@ -34,13 +44,20 @@ export function ClassesPage() {
     if (!classDetailsOpen || !selectedClassId) return;
     let active = true;
     setDetailError("");
+    setMembersNotice("");
     setClassActivities([]);
     setDetailMembers([]);
-    Promise.all([teacherService.getAssignments(), teacherService.getClassMembers(selectedClassId)])
-      .then(([activities, classMembers]) => {
+    setAllStudents([]);
+    Promise.all([
+      teacherService.getAssignments(),
+      teacherService.getClassMembers(selectedClassId),
+      teacherService.getAllStudents(),
+    ])
+      .then(([activities, classMembers, students]) => {
         if (!active) return;
         setClassActivities(activities.filter((item: any) => item.classIds?.includes(selectedClassId)));
         setDetailMembers(classMembers);
+        setAllStudents(students);
       })
       .catch(() => { if (active) setDetailError("Could not load class activity or members."); });
     return () => { active = false; };
@@ -71,9 +88,16 @@ export function ClassesPage() {
   useEffect(() => { tableScrollRef.current?.scrollTo({ top: 0 }); }, [currentPage, search, term]);
   const assignments = classActivities.filter(item => !item.isContest);
   const contests = classActivities.filter(item => item.isContest);
+  const enrolledIds = useMemo(
+    () => new Set(detailMembers.map((member) => member.id).filter(Boolean)),
+    [detailMembers],
+  );
   const filteredStudents = useMemo(() => detailMembers.filter((student) =>
-    `${student.name} ${student.id}`.toLowerCase().includes(studentSearch.toLowerCase()),
+    `${student.name} ${student.id} ${student.email || ""}`.toLowerCase().includes(studentSearch.toLowerCase()),
   ), [detailMembers, studentSearch]);
+  const availableStudents = useMemo(() => allStudents.filter((student) =>
+    student.id && !enrolledIds.has(student.id),
+  ), [allStudents, enrolledIds]);
 
   useEffect(() => {
     if (selectedClass && selectedClassId !== selectedClass.id) setSelectedClassId(selectedClass.id);
@@ -84,9 +108,86 @@ export function ClassesPage() {
     setStudentSearch("");
   }
 
-  function openClassDetails() {
-    setDetailTab("assignments");
+  function openClassDetails(tab: "assignments" | "members") {
+    setDetailTab(tab);
+    setStudentSearch("");
+    setAddSearch("");
+    setMembersNotice("");
     setClassDetailsOpen(true);
+  }
+
+  function setClassStudentCount(classId: string, count: number) {
+    setClasses((current) => current.map((item) => item.id === classId ? { ...item, students: count } : item));
+  }
+
+  async function changeMembership(student: TeacherClassMember, action: "add" | "remove") {
+    if (!selectedClassId || !student.id || memberBusyId) return;
+    setMemberBusyId(student.id);
+    setDetailError("");
+    setMembersNotice("");
+    try {
+      if (action === "add") {
+        const added = await teacherService.addClassMember(selectedClassId, { student_id: student.id });
+        const next = [...detailMembers, added].sort((a, b) => a.name.localeCompare(b.name));
+        setDetailMembers(next);
+        setClassStudentCount(selectedClassId, next.length);
+        setMembersNotice(`${student.name} added to this class.`);
+      } else {
+        await teacherService.removeClassMember(selectedClassId, student.id);
+        const next = detailMembers.filter((member) => member.id !== student.id);
+        setDetailMembers(next);
+        setClassStudentCount(selectedClassId, next.length);
+        setMembersNotice(`${student.name} removed from this class.`);
+      }
+    } catch (error) {
+      setDetailError(error instanceof Error ? error.message : `Could not ${action} this student.`);
+    } finally {
+      setMemberBusyId("");
+    }
+  }
+
+  function openRosterFilePicker() {
+    const input = rosterFileRef.current;
+    if (!input || importing) return;
+    pickerShield.current?.();
+    input.click();
+    const swallowBackdropClick = (event: Event) => {
+      if (event.target instanceof HTMLDialogElement) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      cleanup();
+    };
+    const cleanup = () => {
+      window.removeEventListener("click", swallowBackdropClick, true);
+      if (pickerShield.current === cleanup) pickerShield.current = null;
+    };
+    window.setTimeout(() => {
+      window.addEventListener("click", swallowBackdropClick, true);
+      pickerShield.current = cleanup;
+      input.addEventListener("cancel", () => window.setTimeout(cleanup, 400), { once: true });
+      input.addEventListener("change", () => window.setTimeout(cleanup, 400), { once: true });
+    }, 0);
+  }
+
+  async function importRoster(file: File) {
+    if (!selectedClassId || importing) return;
+    setImporting(true);
+    setDetailError("");
+    setMembersNotice("");
+    try {
+      const result = await teacherService.importClassMembers(selectedClassId, file);
+      const classMembers = await teacherService.getClassMembers(selectedClassId);
+      setDetailMembers(classMembers);
+      setClassStudentCount(selectedClassId, classMembers.length);
+      if (result.reportRows) downloadCsv(result.filename, result.reportCsv);
+      setMembersNotice(rosterImportNotice(result));
+    } catch (error) {
+      setDetailError(error instanceof Error ? error.message : "Could not import the CSV roster.");
+    } finally {
+      setImporting(false);
+      if (rosterFileRef.current) rosterFileRef.current.value = "";
+    }
   }
 
   return (
@@ -179,9 +280,14 @@ export function ClassesPage() {
             </div>
 
             <p className="teacher-class-summary-students">{selectedClass.students} students</p>
-            <button className="button primary teacher-class-detail-button" type="button" onClick={openClassDetails}>
-              View class details
-            </button>
+            <div className="teacher-class-summary-actions">
+              <button className="button primary teacher-class-detail-button" type="button" onClick={() => openClassDetails("members")}>
+                Manage students
+              </button>
+              <button className="button teacher-class-detail-button" type="button" onClick={() => openClassDetails("assignments")}>
+                View assignments
+              </button>
+            </div>
           </> : <p className="muted">Select a class to view its assignments and student progress.</p>}
         </aside>
       </div>
@@ -190,25 +296,29 @@ export function ClassesPage() {
       {classDetailsOpen && selectedClass && (
         <Dialog
           className="teacher-class-detail-dialog-modal"
-          title={`${selectedClass.id} · Class details`}
+          title={selectedClass.id}
           onClose={() => setClassDetailsOpen(false)}
         >
           <div className="teacher-class-detail-dialog-content">
-            <p className="muted">{selectedClass.course} · {selectedClass.term}</p>
-            {(selectedClass.startDate && selectedClass.endDate) && (
-              <p className="muted" style={{ fontSize: "0.85rem", marginTop: "-0.5rem" }}>
-                {selectedClass.startDate} to {selectedClass.endDate}
-              </p>
-            )}
-            <p className="teacher-class-detail-counts">{selectedClass.students} students · {assignments.length} assignments · {contests.length} contests</p>
-            {detailError && <p role="alert" className="teacher-state-failed">{detailError}</p>}
+            <header className="class-dialog-header">
+              <div className="class-dialog-meta">
+                <strong>{selectedClass.course}</strong>
+                <span className="class-dialog-term">{selectedClass.term}</span>
+              </div>
+              <dl className="class-dialog-stats">
+                <div><dt>Students</dt><dd>{selectedClass.students}</dd></div>
+                <div><dt>Assignments</dt><dd>{assignments.length}</dd></div>
+                <div><dt>Contests</dt><dd>{contests.length}</dd></div>
+              </dl>
+            </header>
+            {detailError && <p role="alert" className="class-dialog-alert">{detailError}</p>}
 
             <div className="teacher-class-detail-tabs" role="tablist" aria-label="Class details">
-              <button id="class-assignments-tab" type="button" role="tab" aria-selected={detailTab === "assignments"} aria-controls="class-assignments-panel" className={detailTab === "assignments" ? "is-active" : ""} onClick={() => setDetailTab("assignments")}>
-                Class assignments <span>{assignments.length}</span>
-              </button>
               <button id="class-members-tab" type="button" role="tab" aria-selected={detailTab === "members"} aria-controls="class-members-panel" className={detailTab === "members" ? "is-active" : ""} onClick={() => setDetailTab("members")}>
-                Class members <span>{detailMembers.length}</span>
+                Students <span>{detailMembers.length}</span>
+              </button>
+              <button id="class-assignments-tab" type="button" role="tab" aria-selected={detailTab === "assignments"} aria-controls="class-assignments-panel" className={detailTab === "assignments" ? "is-active" : ""} onClick={() => setDetailTab("assignments")}>
+                Assignments <span>{assignments.length}</span>
               </button>
             </div>
 
@@ -226,26 +336,93 @@ export function ClassesPage() {
               )) : <p className="muted">No assignment progress is available for this class yet.</p>}
             </section>
 
+            {/* Lecturers own the roster: CSV import and type-to-narrow add. Admins only assign lecturers. */}
             <section id="class-members-panel" className="teacher-class-detail-section" role="tabpanel" aria-labelledby="class-members-tab" hidden={detailTab !== "members"}>
-              <label className="teacher-student-search">
-                <span className="sr-only">Search students</span>
-                <input
-                  value={studentSearch}
-                  onChange={(event) => setStudentSearch(event.target.value)}
-                  placeholder="Search students..."
-                />
-              </label>
-              <div className="teacher-class-student-list">
-                {filteredStudents.map((student) => (
-                  <div className="teacher-class-student-row" key={student.id}>
-                    <div className="teacher-class-student-name">
-                      <strong>{student.name}</strong>
-                      <small>{student.id}</small>
-                    </div>
-                    <div className="teacher-class-student-stat"><small>{student.role}</small></div>
+              {membersNotice && <p className="class-roster-notice" role="status">{membersNotice}</p>}
+              <div className="class-roster">
+                <section className="class-roster-pane" aria-labelledby="enrolled-students-heading">
+                  <div className="class-roster-pane-heading">
+                    <h3 id="enrolled-students-heading">In this class</h3>
+                    <span className="class-roster-count">{detailMembers.length}</span>
                   </div>
-                ))}
-                {!filteredStudents.length && <p className="muted">No students match this search.</p>}
+                  {detailMembers.length > 5 && (
+                    <label className="person-search">
+                      <span className="sr-only">Filter enrolled students</span>
+                      <Search size={15} aria-hidden="true" />
+                      <input
+                        type="search"
+                        value={studentSearch}
+                        onChange={(event) => setStudentSearch(event.target.value)}
+                        placeholder="Filter by name or email..."
+                      />
+                    </label>
+                  )}
+                  <ul className="class-roster-list">
+                    {filteredStudents.map((student) => (
+                      <li className="class-roster-row" key={student.id}>
+                        <PersonIdentity name={student.name} id={student.id} email={student.email} />
+                        <button
+                          className="class-roster-remove"
+                          type="button"
+                          aria-label={`Remove ${student.name} from this class`}
+                          title="Remove from class"
+                          disabled={Boolean(memberBusyId)}
+                          onClick={() => void changeMembership(student, "remove")}
+                        >
+                          {memberBusyId === student.id ? "…" : <X size={14} aria-hidden="true" />}
+                        </button>
+                      </li>
+                    ))}
+                    {!filteredStudents.length && (
+                      <li className="class-roster-empty">{detailMembers.length ? "No students match this filter." : "No students yet. Use Add students to enroll them."}</li>
+                    )}
+                  </ul>
+                </section>
+
+                <section className="class-roster-pane class-roster-add" aria-labelledby="add-students-heading">
+                  <div className="class-roster-pane-heading">
+                    <h3 id="add-students-heading">Add students</h3>
+                    <span className="class-roster-count">{availableStudents.length} available</span>
+                  </div>
+                  <SearchablePersonMenu
+                    label="Search students to add"
+                    items={availableStudents.filter((student) => student.id).map((student) => ({
+                      id: student.id as string,
+                      name: student.name,
+                      email: student.email,
+                    }))}
+                    query={addSearch}
+                    onQueryChange={setAddSearch}
+                    onSelect={(person) => {
+                      const student = allStudents.find((item) => item.id === person.id);
+                      if (student) void changeMembership(student, "add");
+                    }}
+                    searchPlaceholder="Search name or email..."
+                    emptyText={availableStudents.length ? "No students match this search." : "Everyone is already in this class."}
+                    actionLabel="+ Add"
+                    disabledId={memberBusyId}
+                    busy={Boolean(memberBusyId)}
+                  />
+                  <div className="class-roster-bulk">
+                    <button type="button" className="class-roster-import" disabled={importing} onClick={openRosterFilePicker}>
+                      <Upload size={14} aria-hidden="true" />
+                      {importing ? "Importing…" : "Import from CSV"}
+                    </button>
+                    <button type="button" className="class-roster-template" onClick={downloadRosterTemplate} title="A result file is downloaded after each import.">
+                      Get template
+                    </button>
+                    <input
+                      ref={rosterFileRef}
+                      type="file"
+                      accept=".csv,text/csv"
+                      hidden
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) void importRoster(file);
+                      }}
+                    />
+                  </div>
+                </section>
               </div>
             </section>
           </div>
