@@ -17,6 +17,7 @@ COPY app ./app
 COPY migrations ./migrations
 COPY scripts ./scripts
 COPY docker ./docker
+RUN chmod +x docker/entrypoint.sh
 
 ARG VCS_REF=local
 ENV APP_REVISION=${VCS_REF}
@@ -25,4 +26,5 @@ RUN useradd --system --create-home --uid 10001 appuser \
 USER appuser
 
 EXPOSE 8000
+ENTRYPOINT ["docker/entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

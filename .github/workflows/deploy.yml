@@ -54,6 +54,26 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Run database migrations before deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Loading tested backend image..."
+          docker load -i backend-image.tar 2>/dev/null || true
+
+          echo "Running database migrations against production database..."
+          docker run --rm \
+            -e DATABASE_URL="${{ secrets.PRODUCTION_DATABASE_URL }}" \
+            -e SECRET_KEY="${{ secrets.SECRET_KEY }}" \
+            "$IMAGE" \
+            python -m migrations.run_all
+
+          echo "Database migrations completed successfully."
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        if: always()
+        with:
+          name: backend-image
+        continue-on-error: true
       - name: Deploy backend container
         uses: azure/webapps-deploy@02a81bead70021f5284939794bcec79c271ab383 # v3
         with:
