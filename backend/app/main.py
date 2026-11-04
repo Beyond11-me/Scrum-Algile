@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from app.core.config import get_settings
 from app.db.session import engine, Base, SessionLocal
+from app.middleware.jwt_auth import JWTAuthenticationMiddleware
 
 import app.models  # Ensure models are loaded before create_all
 Base.metadata.create_all(bind=engine)
@@ -27,6 +28,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(JWTAuthenticationMiddleware)
 
 @app.get("/")
 def read_root():

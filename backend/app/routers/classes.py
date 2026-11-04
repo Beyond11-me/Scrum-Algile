@@ -6,7 +6,7 @@ import uuid
 
 from app.db.session import SessionLocal
 from app import models, schemas
-from app.dependencies.auth import get_current_user
+from app.services.authorization import get_role_code, require_permission
 
 router = APIRouter()
 
@@ -17,12 +17,9 @@ def get_db():
     finally:
         db.close()
 
-def check_instructor_role(current_user: models.User = Depends(get_current_user)):
-    if current_user.role.lower() not in ["instructor", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to manage classes."
-        )
+def check_instructor_role(
+    current_user: models.User = Depends(require_permission("class.manage_assigned")),
+):
     return current_user
 
 @router.get("/students", response_model=List[schemas.ClassMemberResponse])
@@ -41,7 +38,7 @@ def get_all_students(db: Session = Depends(get_db), current_user: models.User = 
 
 @router.get("", response_model=List[schemas.ClassResponse])
 def get_classes(db: Session = Depends(get_db), current_user: models.User = Depends(check_instructor_role)):
-    if current_user.role.lower() == "admin":
+    if get_role_code(current_user) == "admin":
         classes = db.query(models.Class).all()
     else:
         classes = db.query(models.Class).filter(models.Class.instructor_id == current_user.id).all()
@@ -101,7 +98,7 @@ def get_class_members(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(check_instructor_role)
 ):
-    if current_user.role.lower() == "admin":
+    if get_role_code(current_user) == "admin":
         c = db.query(models.Class).filter(models.Class.id == class_id).first()
     else:
         c = db.query(models.Class).filter(models.Class.id == class_id, models.Class.instructor_id == current_user.id).first()
@@ -129,7 +126,7 @@ def add_class_member(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(check_instructor_role)
 ):
-    if current_user.role.lower() == "admin":
+    if get_role_code(current_user) == "admin":
         c = db.query(models.Class).filter(models.Class.id == class_id).first()
     else:
         c = db.query(models.Class).filter(models.Class.id == class_id, models.Class.instructor_id == current_user.id).first()
@@ -173,7 +170,7 @@ def remove_class_member(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(check_instructor_role)
 ):
-    if current_user.role.lower() == "admin":
+    if get_role_code(current_user) == "admin":
         c = db.query(models.Class).filter(models.Class.id == class_id).first()
     else:
         c = db.query(models.Class).filter(models.Class.id == class_id, models.Class.instructor_id == current_user.id).first()

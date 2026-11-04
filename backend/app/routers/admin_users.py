@@ -1,22 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 from app.db.session import get_db
 from app.models import User, ActivityLog
-from app.dependencies.auth import get_current_user
 from app.core.security import get_password_hash
 from app.services.rbac import assign_user_role
+from app.services.authorization import require_permission
 
 router = APIRouter()
 
-def require_admin(current_user: User = Depends(get_current_user)):
-    if getattr(current_user, "role", "").lower() != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Chỉ Quản trị viên (Admin) mới có quyền truy cập."
-        )
+def require_admin(current_user: User = Depends(require_permission("user.manage"))):
     return current_user
 
 class AdminUserResponse(BaseModel):
