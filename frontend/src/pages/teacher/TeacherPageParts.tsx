@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export function TeacherPageIntro({
   title,
@@ -51,79 +51,5 @@ export function TeacherField({
       <span>{label}</span>
       {children}
     </label>
-  );
-}
-
-export function ClassPicker({
-  selected,
-  onChange,
-  classes,
-  loading,
-  error,
-}: {
-  selected: string[];
-  onChange: (next: string[]) => void;
-  classes: { id: string }[];
-  loading: boolean;
-  error: string;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="teacher-class-picker">
-      <div className="teacher-class-chips">
-        {selected.map((id) => (
-          <button
-            type="button"
-            className="teacher-class-chip"
-            key={id}
-            onClick={() => onChange(selected.filter((value) => value !== id))}
-            aria-label={`Remove ${id}`}
-            title={`Remove ${id}`}
-          >
-            {id} <span aria-hidden="true">×</span>
-          </button>
-        ))}
-        <button
-          type="button"
-          className="teacher-add-class"
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-        >
-          + Add class
-        </button>
-      </div>
-      {open && (
-        <div className="teacher-class-options">
-          {classes.map((classInfo) => {
-            const checked = selected.includes(classInfo.id);
-            return (
-              <label key={classInfo.id}>
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() =>
-                    onChange(
-                      checked
-                        ? selected.filter((id) => id !== classInfo.id)
-                        : [...selected, classInfo.id],
-                    )
-                  }
-                />
-                {classInfo.id}
-              </label>
-            );
-          })}
-          {loading ? <span className="muted">Loading classes…</span> : error ? <span role="alert">{error}</span> : classes.length === 0 && <span className="muted">No classes available.</span>}
-          <button
-            type="button"
-            className="text-button"
-            onClick={() => setOpen(false)}
-          >
-            Done
-          </button>
-        </div>
-      )}
-    </div>
   );
 }
