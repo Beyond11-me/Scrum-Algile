@@ -68,7 +68,7 @@ JetBrains Mono everywhere, through `--font-ui` and `--font-mono`.
 
 ## Auth screens
 
-Register as Lecturer is the reference. Sign in and Sign up use the same form through `AuthLayout` with `centered`.
+Sign in is the reference and uses `AuthLayout` with `centered`. Accounts are created by an administrator, so there is no sign-up screen.
 
 - **Layout:** one raised card in the middle of the page, with no side panel. The card is the one place a shadow is allowed.
 - **Page background:** `--canvas` in light mode and a darker `#131315` in dark mode, so the card stands out.
