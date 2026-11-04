@@ -372,7 +372,7 @@ export function AssignmentsListPage() {
   }, [search, statusFilter]);
 
   return (
-    <section className="teacher-page teacher-library-page compact-teacher-library">
+    <section className="teacher-page teacher-library-page compact-teacher-library teacher-assignment-list-page">
       <h1 className="sr-only">Assignments</h1>
       {loading ? (
         <Loading label="Loading assignments…" />
@@ -393,7 +393,7 @@ export function AssignmentsListPage() {
         />
       ) : (
         <>
-          <div className="teacher-list-filters teacher-problem-filters">
+          <div className="teacher-list-filters teacher-problem-filters teacher-assignment-list-filters">
             <TeacherField label="SEARCH">
               <input
                 value={search}

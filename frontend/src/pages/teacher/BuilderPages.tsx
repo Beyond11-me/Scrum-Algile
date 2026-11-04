@@ -148,6 +148,7 @@ export function AssignmentBuilderPage() {
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveState, setSaveState] = useState("");
   const [alertText, setAlertText] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [addProblemOpen, setAddProblemOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [eligibleStudents, setEligibleStudents] = useState<number | null>(null);
@@ -295,11 +296,8 @@ export function AssignmentBuilderPage() {
 
       setDraft({ ...draft, published: isPublished });
       setSaveState("All changes saved");
-      setAlertText(isPublished ? "Successfully published." : "Draft saved successfully.");
-
-      if (isNew) {
-        navigate("/teacher/assignments");
-      }
+      setAlertText("");
+      setSuccessMessage(isPublished ? "Successfully published." : "Draft saved successfully.");
     } catch (e) {
       setSaveState(e instanceof Error ? e.message : "Could not save to server.");
     } finally {
@@ -580,6 +578,22 @@ export function AssignmentBuilderPage() {
             classes={availableClasses}
             problems={allProblems}
           />
+        </Dialog>
+      )}
+      {successMessage && (
+        <Dialog
+          title={isNew ? "Assignment saved" : "Assignment updated"}
+          onClose={() => navigate("/teacher/assignments")}
+          closeOnBackdrop={false}
+          closeOnCancel={false}
+          hideClose
+        >
+          <p role="status">{successMessage}</p>
+          <div className="teacher-page-actions">
+            <button className="button primary" type="button" onClick={() => navigate("/teacher/assignments")} autoFocus>
+              OK
+            </button>
+          </div>
         </Dialog>
       )}
     </section>

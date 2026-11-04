@@ -760,6 +760,39 @@ body:has(.compact-tables-page) { overflow: hidden; }
 }
 
 .teacher-code-title { flex-wrap: wrap; gap: 8px; }
+
+.teacher-assignment-list-page .teacher-assignment-list-filters {
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 190px) auto;
+  align-items: end;
+}
+.teacher-assignment-list-page .teacher-assignment-list-filters .teacher-problem-new {
+  grid-column: 3;
+  justify-self: end;
+  white-space: nowrap;
+}
+@media (max-width: 800px) {
+  .teacher-assignment-list-page .teacher-assignment-list-filters {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .teacher-assignment-list-page .teacher-assignment-list-filters > .teacher-field:first-child {
+    grid-column: 1 / -1;
+  }
+  .teacher-assignment-list-page .teacher-assignment-list-filters .teacher-problem-new {
+    grid-column: 2;
+  }
+}
+@media (max-width: 480px) {
+  .teacher-assignment-list-page .teacher-assignment-list-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .teacher-assignment-list-page .teacher-assignment-list-filters > .teacher-field:first-child,
+  .teacher-assignment-list-page .teacher-assignment-list-filters .teacher-problem-new {
+    grid-column: 1;
+  }
+  .teacher-assignment-list-page .teacher-assignment-list-filters .teacher-problem-new {
+    justify-self: stretch;
+  }
+}
 .teacher-open-sql-editor { margin-left: auto; white-space: nowrap; }
 .teacher-test-case .teacher-code-title > div:first-child { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .dialog.teacher-sql-editor-dialog { width: min(1000px, calc(100vw - 32px)); max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); }
