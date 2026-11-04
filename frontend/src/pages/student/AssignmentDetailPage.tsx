@@ -6,7 +6,11 @@ import { type Assignment } from "../../data/models";
 import { useLoad } from "../../components/useLoad";
 import { Empty, ErrorState, Loading, Status } from "../../components/ui";
 
-function AssignedWork({ items, selectedId, onSelect }: { items: Assignment[]; selectedId?: string; onSelect: (id: string) => void }) {
+function assignmentWorkPath(assignmentId: string, classId: string) {
+  return `/assignments/work/${assignmentId}?classId=${encodeURIComponent(classId)}`;
+}
+
+function AssignedWork({ items, classId, selectedId, onSelect }: { items: Assignment[]; classId: string; selectedId?: string; onSelect: (id: string) => void }) {
   return (
     <section className="detail-work-panel">
       <div className="section-heading">
@@ -23,7 +27,7 @@ function AssignedWork({ items, selectedId, onSelect }: { items: Assignment[]; se
           <article className={`detail-work-row${selectedId === assignment.id ? " selected" : ""}`} key={assignment.id} onClick={() => onSelect(assignment.id)}>
             <span className="assignment-code">AS-{String(index + 1).padStart(2, "0")}</span>
             <div className="assignment-work-description">
-              <h3><button type="button" className="class-assignment-select" aria-pressed={selectedId === assignment.id} onClick={() => onSelect(assignment.id)}>Assignment {index + 1}: {assignment.title}</button></h3>
+              <h3><Link className="class-assignment-title" to={assignmentWorkPath(assignment.id, classId)}>Assignment {index + 1}: {assignment.title}</Link></h3>
               <p className="tiny muted">
                 {assignment.problemIds.length} SQL problem{assignment.problemIds.length === 1 ? "" : "s"}
               </p>
@@ -98,7 +102,7 @@ export function AssignmentDetailPage() {
       </header>
       <div className={`scope-detail-layout${tab === "Work" ? " assignment-selection-layout" : ""}`}>
         <div>
-          {tab === "Work" ? <AssignedWork items={work} selectedId={selected?.id} onSelect={setSelectedId} /> : (
+          {tab === "Work" ? <AssignedWork items={work} classId={currentClass.id} selectedId={selected?.id} onSelect={setSelectedId} /> : (
             <section className="detail-work-panel">
               <h2>Class members</h2>
               <p className="tiny muted">The member roster is not available from the student API yet.</p>
@@ -108,13 +112,13 @@ export function AssignmentDetailPage() {
         <aside className="detail-side-panel class-assignment-details">
           {tab === "Work" && selected ? <>
             <h2>Assignment details</h2>
-            <h3>{selected.title}</h3>
+            <h3><Link className="title-link" to={assignmentWorkPath(selected.id, currentClass.id)}>{selected.title}</Link></h3>
             <Status value={selected.status} />
             <dl className="class-assignment-facts">
               <div><dt>Due</dt><dd>{selected.date ? new Date(selected.date + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) : "No due date"}{selected.time ? ` · ${selected.time}` : ""}</dd></div>
               <div><dt>Progress</dt><dd>{solved}/{selected.problemIds.length} solved</dd></div>
             </dl>
-            <Link className="button primary" to={`/assignments/work/${selected.id}?classId=${encodeURIComponent(currentClass.id)}`}>View assignment →</Link>
+            <Link className="button primary" to={assignmentWorkPath(selected.id, currentClass.id)}>View assignment →</Link>
             {selected.instructions && <section><h3>Instructions</h3><div className="contest-markdown"><ReactMarkdown skipHtml>{selected.instructions}</ReactMarkdown></div></section>}
             <section><h3>Problems · {selected.problemIds.length}</h3>
               {selected.problemIds.map((id, index) => {

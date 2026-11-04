@@ -161,9 +161,9 @@ export function ResultsDashboardPage() {
                     onClick={() => setSelectedResultId(item.id)}
                   >
                     <td data-label="STUDENT">
-                      <button className="teacher-selectable-row-title teacher-list-row-title" type="button" aria-label={`Show details for ${item.student}`} onClick={(event) => { event.stopPropagation(); setSelectedResultId(item.id); }}>
+                      <Link className="teacher-selectable-row-title teacher-list-row-title" to={`/teacher/results/review/${item.id}`}>
                         {item.student}
-                      </button>
+                      </Link>
                     </td>
                     <td data-label="PROBLEM">{item.problemTitle}</td>
                     <td data-label="AUTO SCORE">{item.autoScore}</td>
@@ -194,7 +194,7 @@ export function ResultsDashboardPage() {
           {selectedResult ? (
             <>
               <span className="teacher-detail-eyebrow">SUBMISSION DETAILS</span>
-              <h2>{selectedResult.student}</h2>
+              <h2><Link className="title-link" to={`/teacher/results/review/${selectedResult.id}`}>{selectedResult.student}</Link></h2>
               <p className="muted">{selectedResult.problemTitle}</p>
               <dl className="teacher-list-detail-facts">
                 <div><dt>Auto score</dt><dd>{selectedResult.autoScore}</dd></div>

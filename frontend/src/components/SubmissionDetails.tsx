@@ -34,7 +34,7 @@ export function SubmissionDetails({
           #{submission.id} · Read-only
         </p>
         <h1>
-          {p.number}. {p.title}
+          <Link className="title-link" to={"/workspace/" + p.id}>{p.number}. {p.title}</Link>
         </h1>
         <div className="submission-attempt-meta">
           <p className="tiny muted">{submissionTimeLabel(submission.submittedAt)}</p>

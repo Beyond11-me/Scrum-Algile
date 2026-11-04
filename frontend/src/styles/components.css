@@ -720,7 +720,7 @@ body:has(.assignments-page) {
 }
 .class-card:hover {
   border-color: var(--accent);
-  background: var(--accent-subtle);
+  background: color-mix(in srgb, var(--accent-subtle) 15%, var(--surface));
   color: var(--text);
 }
 .class-card:focus-visible {
