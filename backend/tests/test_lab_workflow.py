@@ -198,6 +198,20 @@ class TestLabWorkflow(unittest.TestCase):
         self.assertEqual(invalid.exception.status_code, 400)
         self.assertEqual(invalid.exception.detail, "Câu hỏi không tồn tại hoặc không khả dụng.")
 
+    def test_invalid_question_update_does_not_change_the_existing_lab(self):
+        created = self.create_lab()
+        with self.assertRaises(HTTPException) as invalid:
+            update_assignment(created["id"], self.payload(
+                title="Changed title", problems=[{"id": "does-not-exist", "points": 10}]
+            ), self.db, self.teacher)
+        self.assertEqual(invalid.exception.status_code, 400)
+        stored = self.db.query(Assignment).filter(Assignment.id == created["id"]).one()
+        self.assertEqual(stored.title, "Lab 01")
+        self.assertEqual(
+            [item.problem_id for item in self.db.query(AssignmentProblem).filter_by(assignment_id=stored.id).all()],
+            [self.problem.id],
+        )
+
     def test_instructor_cannot_assign_a_lab_to_another_instructors_class(self):
         with self.assertRaises(HTTPException) as invalid:
             self.create_lab(classIds=[self.other_class.id])
