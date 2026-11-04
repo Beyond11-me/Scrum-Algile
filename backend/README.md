@@ -107,7 +107,7 @@ python scripts/seed.py
 
 **Seed the complete local UI fixture:**
 
-The idempotent development fixture adds classes, assignments, contests, submissions, notifications, saved problems, a saved draft, AI chat history, admin activity, and active/pending/inactive accounts. It runs the normal demo seed first.
+The idempotent development fixture adds classes, assignments, contests, submissions, notifications, saved problems, a saved draft, AI chat history, admin activity, and active/inactive accounts. It runs the normal demo seed first. Pending lecturer accounts are no longer created.
 
 ```bash
 python -m scripts.seed_dev_data
@@ -130,6 +130,15 @@ python -m migrations.rbac_v1
 Run this command before starting a version that uses `users.role_id`. It creates
 the RBAC tables and safely maps the existing `users.role` values. Details are in
 [`migrations/README.md`](migrations/README.md).
+
+**Upgrade an existing database for account management:**
+
+```bash
+python -m migrations.account_management_v1
+python -m migrations.account_management_v2
+```
+
+Run both from `backend/` before starting this version. The first adds `users.profile_updated_at` and sets every `Pending` account to `Inactive`. The second adds `users.password_record`. For an account created before that column existed, a password of `password123` or `123` is kept. Every other older account receives a new generated password, and the command prints those email addresses. An admin reads the current password from the account edit screen. Details are in [`migrations/README.md`](migrations/README.md).
 
 **Upgrade an existing database for the current UI:**
 

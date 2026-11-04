@@ -60,17 +60,20 @@ export const authService = {
     return persist(data.user, data.access_token);
   },
 
-  async registerLecturer(name: string, email: string, password: string, department: string) {
-    if (!name.trim() || !validEmail(email) || password.length < 8 || !department.trim()) {
-      throw new Error("Check the registration fields.");
-    }
-    const data = await apiFetch("/api/auth/register-lecturer", {
-      method: "POST",
-      body: JSON.stringify({ name, email, password, department }),
-    });
-    return data; // Returns { message: "..." }
+  async getProfile(): Promise<StudentSession & { nextProfileChangeAt: string | null }> {
+    return apiFetch("/api/auth/profile");
   },
-  
+
+  async updateProfile(body: { name?: string; currentPassword?: string; newPassword?: string }) {
+    const data = await apiFetch("/api/auth/profile", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+    const token = storage.get(TOKEN_KEY);
+    if (!token) throw new Error("Sign in again before changing your account.");
+    return persist(data, token);
+  },
+
   logout() {
     sessionVersion += 1;
     storage.remove(SESSION_KEY);

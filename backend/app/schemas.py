@@ -17,12 +17,6 @@ class UserCreate(BaseModel):
     name: str
     password: str
 
-class LecturerRegisterRequest(BaseModel):
-    email: str
-    name: str
-    password: str
-    department: str
-
 class UserResponse(UserBase):
     id: str
 
@@ -258,13 +252,6 @@ class AdminUserResponse(CamelModel):
     last_active: str
     joined: str
     detail: str
-
-class LecturerRequestResponse(CamelModel):
-    id: str
-    name: str
-    email: str
-    department: str
-    submitted: str
 
 class AdminUserUpdate(BaseModel):
     name: str

@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Search } from "lucide-react";
 import { Dialog, Empty, ErrorState, Loading } from "../../components/ui";
 import { AdminOnlyButton } from "../../components/withRoleAccess";
+import { useAuth } from "../../context/AuthContext";
+import { ApiError } from "../../services/apiClient";
 import {
   adminCapabilities,
   defaultAdminRolePolicy,
   type AdminClass,
-  type AdminLecturerRequest,
   type AdminPracticeProblem,
   type AdminRoleName,
 } from "../../data/adminPolicy";
@@ -18,6 +19,18 @@ import type { TeacherClassMember } from "../../data/teacherTypes";
 import { studentApi } from "../../services/studentApi";
 import { academicTerms, classDateError, CLASS_DATE_MAX, CLASS_DATE_MIN, formatClassDateRange } from "../../utils/academicTerms";
 import { localTime, parseServerDateTime } from "../../utils/serverDateTime";
+import { downloadCsv } from "../../utils/rosterCsv";
+
+const PERSON_NAME = /^[A-Za-z ]{2,100}$/;
+const ACCOUNT_EMAIL = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+function collapseName(value: string) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function formFields(error: unknown) {
+  return error instanceof ApiError ? error.fields : {};
+}
 
 function PageIntro({ title, sub, children, compact = false }: { title: string; sub?: string; children?: ReactNode; compact?: boolean }) {
   return <div className={`admin-page-intro${compact ? " page-list-intro" : ""}`}><div><h1 className={compact ? "sr-only" : undefined}>{title}</h1>{sub && <p>{sub}</p>}</div>{children && <div className="admin-page-actions">{children}</div>}</div>;
@@ -58,32 +71,141 @@ function AddUserDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (user: 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<AdminUser["role"]>("Student");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!name.trim() || !email.trim() || !password.trim()) return;
+    const next: Record<string, string> = {};
+    const cleanName = collapseName(name);
+    const cleanEmail = email.trim().toLowerCase();
+    if (!PERSON_NAME.test(cleanName)) next.name = "Use 2–100 letters and spaces, with no accents or digits.";
+    if (!cleanEmail || cleanEmail.length > 255 || !ACCOUNT_EMAIL.test(cleanEmail)) next.email = "Enter a valid email address.";
+    if (password.length < 8) next.password = "Password must be at least 8 characters.";
+    if (password.length > 64) next.password = "Password must be at most 64 characters.";
+    setErrors(next);
+    if (Object.keys(next).length) return;
     setLoading(true);
-    setError("");
     try {
-      const newUser = await adminService.createUser({ name: name.trim(), email: email.trim(), role, password });
+      const newUser = await adminService.createUser({ name: cleanName, email: cleanEmail, role, password });
       onAdd(newUser);
-    } catch (err: any) {
-      setError(err.message || "Failed to create user");
+    } catch (err: unknown) {
+      const fields = formFields(err);
+      setErrors(Object.keys(fields).length ? fields : { form: err instanceof Error ? err.message : "Failed to create user" });
     } finally {
       setLoading(false);
     }
   }
 
-  return <Dialog title="Add user" onClose={onClose} className="admin-dialog"><form onSubmit={submit} className="admin-dialog-form">
-    <Field label="NAME"><input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" required /></Field>
-    <Field label="EMAIL"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.edu" required /></Field>
-    <Field label="PASSWORD"><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required minLength={8} /></Field>
+  return <Dialog title="Add user" onClose={onClose} className="admin-dialog"><form onSubmit={submit} className="admin-dialog-form" noValidate>
+    <Field label="NAME"><input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Nguyen Van An" maxLength={100} aria-invalid={!!errors.name} />{errors.name && <small className="field-error">{errors.name}</small>}</Field>
+    <Field label="EMAIL"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.edu" maxLength={255} aria-invalid={!!errors.email} />{errors.email && <small className="field-error">{errors.email}</small>}</Field>
+    <Field label="PASSWORD"><input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" maxLength={64} aria-invalid={!!errors.password} />{errors.password && <small className="field-error">{errors.password}</small>}<button type="button" className="text-button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide password" : "Show password"}</button></Field>
     <Field label="ROLE"><select value={role} onChange={(e) => setRole(e.target.value as AdminUser["role"])}><option>Student</option><option>Lecturer</option><option>Admin</option></select></Field>
-    {error && <p className="admin-warning" style={{ margin: 0 }}>{error}</p>}
+    {errors.form && <p className="admin-warning" style={{ margin: 0 }}>{errors.form}</p>}
     <div className="admin-dialog-actions"><button type="button" className="button" onClick={onClose} disabled={loading}>Cancel</button><button className="button primary" disabled={loading}>{loading ? "Adding..." : "Add user"}</button></div>
   </form></Dialog>;
+}
+
+function ResetPasswordDialog({ email, name, onClose }: { email: string; name: string; onClose: (notice?: string, password?: string) => void }) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [generated, setGenerated] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
+  async function generate() {
+    setBusy(true);
+    setErrors({});
+    try {
+      const result = await adminService.resetPassword(email, { generate: true });
+      setGenerated(result.password || "");
+      setPassword("");
+      setConfirm("");
+    } catch (err: unknown) {
+      setErrors({ form: err instanceof Error ? err.message : "Could not generate a password." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    const next: Record<string, string> = {};
+    if (password.length < 8) next.password = "Password must be at least 8 characters.";
+    if (password.length > 64) next.password = "Password must be at most 64 characters.";
+    if (password !== confirm) next.confirm = "Passwords must match.";
+    setErrors(next);
+    if (Object.keys(next).length) return;
+    setBusy(true);
+    try {
+      await adminService.resetPassword(email, { password });
+      onClose(`Password reset for ${name}. The new password stays visible on this account.`, password);
+    } catch (err: unknown) {
+      const fields = formFields(err);
+      setErrors(Object.keys(fields).length ? fields : { form: err instanceof Error ? err.message : "Could not reset the password." });
+      setBusy(false);
+    }
+  }
+
+  return <Dialog title="Reset password" onClose={() => onClose(undefined, generated || undefined)} className="admin-dialog">
+    {generated ? <div className="admin-dialog-form">
+      <p>The new password for <strong>{name}</strong> is saved. It stays visible in the account list.</p>
+      <p className="admin-detail-title">{generated}</p>
+      <div className="admin-dialog-actions"><button type="button" className="button primary" onClick={() => onClose(`Password reset for ${name}.`, generated)}>Close</button></div>
+    </div> : <form onSubmit={submit} className="admin-dialog-form" noValidate>
+      <p className="admin-muted">{name} · {email}</p>
+      <Field label="NEW PASSWORD"><input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} maxLength={64} aria-invalid={!!errors.password} />{errors.password && <small className="field-error">{errors.password}</small>}<button type="button" className="text-button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide password" : "Show password"}</button></Field>
+      <Field label="CONFIRM PASSWORD"><input type={showPassword ? "text" : "password"} value={confirm} onChange={(event) => setConfirm(event.target.value)} maxLength={64} aria-invalid={!!errors.confirm} />{errors.confirm && <small className="field-error">{errors.confirm}</small>}</Field>
+      {errors.form && <p className="admin-warning" style={{ margin: 0 }}>{errors.form}</p>}
+      <div className="admin-dialog-actions"><button type="button" className="button" onClick={generate} disabled={busy}>Generate password</button><button className="button primary" disabled={busy}>{busy ? "Saving..." : "Reset password"}</button></div>
+    </form>}
+  </Dialog>;
+}
+
+function RemoveAccountDialog({ user, onClose, onRemoved }: { user: AdminUser; onClose: () => void; onRemoved: () => void }) {
+  const [typed, setTyped] = useState("");
+  const [accepted, setAccepted] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const ready = typed.trim() === user.email && accepted && !busy;
+
+  async function remove() {
+    if (!ready) return;
+    setBusy(true);
+    setError("");
+    try {
+      await adminService.deleteUser(user.email, typed.trim());
+      onRemoved();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not remove this account.");
+      setBusy(false);
+    }
+  }
+
+  return <Dialog title="Remove account permanently" onClose={onClose} className="admin-dialog admin-remove-dialog">
+    <div className="admin-dialog-form">
+      <p>This permanently deletes <strong>{user.name}</strong> ({user.email}). They will not be able to sign in again.</p>
+      <p>Their submissions, drafts, favorites, lists, notifications, and class enrollments are deleted. Classes and assignments they teach stay, but no longer list them as the lecturer. Problems they created stay on the platform.</p>
+      <p>This cannot be undone. Deactivate the account instead if you only need to block sign-in.</p>
+      <Field label="TYPE THE ACCOUNT EMAIL"><input value={typed} onChange={(event) => setTyped(event.target.value)} autoComplete="off" spellCheck={false} aria-invalid={typed.length > 0 && typed.trim() !== user.email} /></Field>
+      <label className="admin-confirm-check"><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} /><span>I understand this permanently deletes the account and cannot be undone.</span></label>
+      {error && <p className="admin-warning" role="alert">{error}</p>}
+      <div className="admin-dialog-actions"><button type="button" className="button" onClick={onClose} disabled={busy}>Cancel</button><button type="button" className="button admin-reject-button" disabled={!ready} onClick={() => void remove()}>{busy ? "Removing..." : "Remove account"}</button></div>
+    </div>
+  </Dialog>;
+}
+
+function passwordText(password: string | undefined, visible: boolean) {
+  if (!password) return "Not on file";
+  return visible ? password : "••••••••";
+}
+
+function csvCell(value: string) {
+  if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
+  return value;
 }
 
 function AdminListPagination({ total, page, onPageChange, label, noun, alwaysVisible = false }: { total: number; page: number; onPageChange: (page: number) => void; label: string; noun: string; alwaysVisible?: boolean }) {
@@ -103,6 +225,8 @@ function AdminListPagination({ total, page, onPageChange, label, noun, alwaysVis
 
 export function AdminUsersPage() {
   const location = useLocation();
+  const { session } = useAuth();
+  const fileInput = useRef<HTMLInputElement>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [selectedEmail, setSelectedEmail] = useState("");
   const [showUserDetails, setShowUserDetails] = useState(false);
@@ -110,12 +234,14 @@ export function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState("All roles");
   const [statusFilter, setStatusFilter] = useState("Active");
   const [page, setPage] = useState(1);
-  const pageSize = 15;
+  const pageSize = 10;
   const [dialog, setDialog] = useState(false);
+  const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<AdminUser | null>(null);
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [pendingRole, setPendingRole] = useState<string | null>(null);
-  const [pendingRequestCount, setPendingRequestCount] = useState(0);
+  const [importing, setImporting] = useState(false);
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
@@ -129,10 +255,6 @@ export function AdminUsersPage() {
       setLoadError(err instanceof Error ? err.message : "Failed to load users.");
       setLoading(false);
     });
-
-    adminService.getLecturerRequests().then(requests => {
-      setPendingRequestCount(requests.length);
-    }).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -175,56 +297,90 @@ export function AdminUsersPage() {
   }
 
   function exportCsv() {
-    const csv = ["Name,Email,Role,Status", ...users.map((u) => [u.name, u.email, u.role, u.status].join(","))].join("\n");
+    const csv = ["Name,Email,Role,Status,Password", ...users.map((u) => [u.name, u.email, u.role, u.status, u.password || ""].map(csvCell).join(","))].join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     const link = document.createElement("a"); link.href = url; link.download = "uit-sql-users.csv"; link.click(); URL.revokeObjectURL(url);
   }
 
+  function revealNewAccount() {
+    setQuery("");
+    setRoleFilter("All roles");
+    setStatusFilter("All statuses");
+    setPage(1);
+  }
+
+  async function importCsv(file: File) {
+    setImporting(true);
+    setNotice("");
+    try {
+      const result = await adminService.importUsers(file);
+      downloadCsv("account-import-result.csv", result.reportCsv);
+      const data = await adminService.getUsers();
+      setUsers(data);
+      revealNewAccount();
+      setNotice(`${result.created} created · ${result.duplicates} duplicates · ${result.invalid} invalid. The result file lists each password once.`);
+    } catch (err: unknown) {
+      setNotice(err instanceof Error ? err.message : "Could not import accounts.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  const ownAccount = selected?.email.toLowerCase() === session?.email.toLowerCase();
+
   if (loading) return <div className={"admin-page compact-tables-page compact-admin-list-page" + (showUserDetails ? " show-user-details" : "")}><h1 className="sr-only">Users</h1><Loading label="Loading users…" /></div>;
   if (loadError) return <div className={"admin-page compact-tables-page compact-admin-list-page" + (showUserDetails ? " show-user-details" : "")}><h1 className="sr-only">Users</h1><ErrorState title="Could not load users" message={loadError} onRetry={() => window.location.reload()} /></div>;
-  return <div className={"admin-page compact-tables-page compact-admin-list-page" + (showUserDetails ? " show-user-details" : "")}>
-    <h1 className="sr-only">Users</h1>
-    {pendingRequestCount > 0 && <div className="admin-pending-banner"><span>{pendingRequestCount} lecturer registrations are awaiting approval. Lecturer access stays locked until approved.</span><Link className="text-button" to="/admin/users/approvals">Review requests →</Link></div>}
-    <div className="admin-user-filter-row">
+  return <div className={"admin-page compact-tables-page compact-admin-list-page admin-users-page" + (showUserDetails ? " show-user-details" : "")}>
+    <div className="admin-users-toolbar">
+      <div className="admin-users-heading"><h1>Users</h1><p>Search accounts, then open one to manage its access.</p></div>
+      <div className="admin-user-actions">
+        <div className="admin-csv-group" role="group" aria-label="CSV files">
+          <span>CSV</span>
+          <button type="button" className="button admin-button" title="Download a blank CSV" onClick={() => downloadCsv("account-import-template.csv", "email,role\r\n26520598@gm.uit.edu.vn,Student\r\n")}>Template</button>
+          <AdminOnlyButton className="button admin-button" title="Create accounts from a CSV" disabled={importing} onClick={() => fileInput.current?.click()}>{importing ? "Importing..." : "Import"}</AdminOnlyButton>
+          <button type="button" className="button admin-button" title="Download every account" onClick={exportCsv} disabled={users.length === 0}>Export</button>
+        </div>
+        <input ref={fileInput} type="file" accept=".csv,text/csv" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void importCsv(file); }} />
+        <AdminOnlyButton className="button primary admin-button" onClick={() => setDialog(true)}>Add user</AdminOnlyButton>
+      </div>
       <div className="admin-user-filters">
         <Field label="SEARCH"><input value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} placeholder="Search name or email..." /></Field>
         <Field label="ROLE"><select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}><option>All roles</option><option>Student</option><option>Lecturer</option><option>Admin</option></select></Field>
-        <Field label="STATUS"><select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}><option>Active</option><option>All statuses</option><option>Inactive</option><option>Pending</option></select></Field>
-      </div>
-      <div className="admin-user-actions">
-        <button className="button admin-button" onClick={exportCsv} disabled={users.length === 0}>Export all CSV</button>
-        <AdminOnlyButton className="button primary admin-button" onClick={() => setDialog(true)}>Add user</AdminOnlyButton>
+        <Field label="STATUS"><select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}><option>Active</option><option>All statuses</option><option>Inactive</option></select></Field>
       </div>
     </div>
     {notice && <Notice>{notice}</Notice>}
     <Split main={<>
-      <div className="admin-table-wrap compact-table-scroll" role="region" aria-label="Users table" tabIndex={0}><table className="admin-table admin-users-table"><thead><tr><th>NAME / EMAIL</th><th>ROLE</th><th>STATUS</th><th>LAST ACTIVE</th></tr></thead><tbody>
+      <div className="admin-table-wrap compact-table-scroll" role="region" aria-label="Users table" tabIndex={0}><table className="admin-table admin-users-table"><thead><tr><th>NAME / EMAIL</th><th>ROLE</th><th>STATUS</th><th>LAST ACTIVE</th><th>JOINED</th></tr></thead><tbody>
         {pageUsers.map((user) => <tr key={user.email} className={selected?.email === user.email ? "is-selected" : ""} onClick={() => { setSelectedEmail(user.email); setShowUserDetails(true); }}>
-          <td data-label="NAME / EMAIL"><Link className="admin-row-link" to={`/admin/users/${encodeURIComponent(user.email)}/edit`}>{user.name}</Link><small>{user.email}</small></td><td data-label="ROLE">{user.role}</td><td data-label="STATUS" className={user.status === "Active" ? "admin-success" : ""}>{user.status}</td><td data-label="LAST ACTIVE">{user.lastActive}</td>
+          <td data-label="NAME / EMAIL"><Link className="admin-row-link" to={`/admin/users/${encodeURIComponent(user.email)}/edit`}>{user.name}</Link><small>{user.email}</small></td><td data-label="ROLE">{user.role}</td><td data-label="STATUS" className={user.status === "Active" ? "admin-success" : ""}>{user.status}</td><td data-label="LAST ACTIVE">{user.lastActive}</td><td data-label="JOINED">{user.joined}</td>
         </tr>)}
       </tbody></table>
-        {filtered.length === 0 && <Empty title={users.length === 0 ? "No accounts yet" : "No matching accounts"}>{users.length === 0 ? "Add a user to get started." : "Try a different search or filter."}</Empty>}
+        {filtered.length === 0 && <Empty title={users.length === 0 ? "No accounts yet" : "No users found."}>{users.length === 0 ? "Add a user to get started." : "Try a different search or filter."}</Empty>}
       </div>
       <div className="admin-compact-list-footer">
         <div className="admin-compact-list-controls">
           <span role="status">Showing {filtered.length === 0 ? 0 : firstIndex + 1}–{Math.min(firstIndex + pageSize, filtered.length)} of {filtered.length.toLocaleString()} accounts</span>
-          <nav className="admin-table-pagination" aria-label="User pages">
+          {pageCount > 1 && <nav className="admin-table-pagination" aria-label="User pages">
             <button type="button" className="button admin-button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>← Previous</button>
             <span>Page {currentPage} of {pageCount}</span>
             <button type="button" className="button admin-button" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>Next →</button>
-          </nav>
+          </nav>}
         </div>
       </div>
     </>} side={selected ? <>
       <div className="admin-compact-panel-header"><h2>Account details</h2><button type="button" className="text-button compact-panel-back" onClick={() => setShowUserDetails(false)}>Back to users</button></div><h3 className="admin-detail-title"><Link className="title-link" to={`/admin/users/${encodeURIComponent(selected.email)}/edit`}>{selected.name}</Link></h3><p className="admin-muted">{selected.email}</p><div className="admin-detail-divider" />
-      <Field label="ROLE"><select value={pendingRole ?? selected.role} onChange={(e) => setPendingRole(e.target.value)}><option>Student</option><option>Lecturer</option><option>Admin</option></select></Field>
-      {pendingRole && pendingRole !== selected.role && (
+      <Field label="ROLE"><select value={pendingRole ?? selected.role} disabled={ownAccount} onChange={(e) => setPendingRole(e.target.value)}><option>Student</option><option>Lecturer</option><option>Admin</option></select></Field>
+      {ownAccount && <p className="admin-muted">You cannot change your own role here.</p>}
+      {pendingRole && pendingRole !== selected.role && !ownAccount && (
         <button className="button primary admin-button" style={{ marginBottom: "1rem" }} onClick={() => { handleUpdateRole(selected, pendingRole); setPendingRole(null); }}>Save role</button>
       )}
-      <p className={selected.status === "Active" ? "admin-success admin-detail-status" : "admin-warning admin-detail-status"}>{selected.status} · Joined {selected.joined}</p><p className="admin-muted">{selected.detail}</p>
-      <div className="admin-button-stack"><Link className="button admin-button" to={`/admin/users/${encodeURIComponent(selected.email)}/edit`}>Edit account</Link></div>
+      <p className={selected.status === "Active" ? "admin-success admin-detail-status" : "admin-warning admin-detail-status"}>{selected.status} · Joined {selected.joined}</p>
+      <div className="admin-button-stack"><Link className="button admin-button" to={`/admin/users/${encodeURIComponent(selected.email)}/edit`}>Edit account</Link><button type="button" className="button admin-button" onClick={() => setResetTarget(selected)}>Reset password</button>{!ownAccount && <button type="button" className="button admin-reject-button" onClick={() => setRemoveTarget(selected)}>Remove account</button>}</div>
     </> : <><h2>Account details</h2><p className="admin-muted">Select an account to review its access.</p></>} />
-    {dialog && <AddUserDialog onClose={() => setDialog(false)} onAdd={(user) => { setUsers((all) => [...all, user]); setSelectedEmail(user.email); setPage(Math.floor(filtered.length / pageSize) + 1); setDialog(false); setNotice(`${user.name} was added successfully.`); }} />}
+    {dialog && <AddUserDialog onClose={() => setDialog(false)} onAdd={(user) => { setUsers((all) => [user, ...all]); setSelectedEmail(user.email); revealNewAccount(); setDialog(false); setNotice(`${user.name} was added successfully.`); }} />}
+    {resetTarget && <ResetPasswordDialog email={resetTarget.email} name={resetTarget.name} onClose={(message, nextPassword) => { const email = resetTarget.email; setResetTarget(null); if (nextPassword) setUsers((all) => all.map((user) => user.email === email ? { ...user, password: nextPassword } : user)); if (message) setNotice(message); }} />}
+    {removeTarget && <RemoveAccountDialog user={removeTarget} onClose={() => setRemoveTarget(null)} onRemoved={() => { const email = removeTarget.email; setUsers((all) => all.filter((user) => user.email !== email)); setRemoveTarget(null); setNotice(`Removed ${email}. This cannot be undone.`); }} />}
   </div>;
 }
 
@@ -232,6 +388,7 @@ export function AdminEditAccountPage() {
   const { email: encodedEmail = "" } = useParams();
   const email = decodeURIComponent(encodedEmail);
   const navigate = useNavigate();
+  const { session } = useAuth();
 
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
   const [name, setName] = useState("");
@@ -239,10 +396,14 @@ export function AdminEditAccountPage() {
   const [role, setRole] = useState<AdminUser["role"]>("Student");
   const [status, setStatus] = useState<AdminUser["status"]>("Active");
   const [notice, setNotice] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [confirmDeactivationSave, setConfirmDeactivationSave] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     adminService.getUsers().then(users => {
@@ -252,7 +413,7 @@ export function AdminEditAccountPage() {
         setName(found.name);
         setAccountEmail(found.email);
         setRole(found.role);
-        setStatus(found.status);
+        setStatus(found.status === "Inactive" ? "Inactive" : "Active");
       }
     }).catch(err => setLoadError(err instanceof Error ? err.message : "Could not load account.")).finally(() => setLoading(false));
   }, [email]);
@@ -263,22 +424,29 @@ export function AdminEditAccountPage() {
 
   async function persistAccount() {
     if (!currentUser) return;
-    const nextName = name.trim();
+    const nextName = collapseName(name);
     const nextEmail = accountEmail.trim().toLowerCase();
-    if (!nextName || !nextEmail) { setNotice("Name and email are required."); return; }
+    const next: Record<string, string> = {};
+    if (nextName !== collapseName(currentUser.name) && !PERSON_NAME.test(nextName)) next.name = "Use 2–100 letters and spaces, with no accents or digits.";
+    if (!nextEmail || nextEmail.length > 255 || !ACCOUNT_EMAIL.test(nextEmail)) next.email = "Enter a valid email address.";
+    setErrors(next);
+    if (Object.keys(next).length) { setConfirmDeactivationSave(false); return; }
+    const isSelf = currentUser.email.toLowerCase() === session?.email.toLowerCase();
 
     setConfirmDeactivationSave(false);
     setSaving(true);
     try {
       await adminService.updateUser(currentUser.email, {
-        name: nextName,
+        name: nextName === collapseName(currentUser.name) ? currentUser.name : nextName,
         email: nextEmail,
-        role,
-        status
+        role: isSelf ? currentUser.role : role,
+        status: isSelf ? currentUser.status : status
       });
       navigate("/admin/users", { state: { selectedEmail: nextEmail, notice: `Account updated for ${nextName}.` } });
-    } catch (err: any) {
-      setNotice(err.message || "Failed to update account.");
+    } catch (err: unknown) {
+      const fields = formFields(err);
+      if (Object.keys(fields).length) setErrors(fields);
+      else setNotice(err instanceof Error ? err.message : "Failed to update account.");
       setSaving(false);
     }
   }
@@ -301,116 +469,29 @@ export function AdminEditAccountPage() {
           <Link className="button admin-button" to="/admin/users">Back to users</Link>
         </div>
         <div className="admin-account-fields">
-          <Field label="FULL NAME"><input value={name} onChange={(event) => setName(event.target.value)} required /></Field>
-          <Field label="EMAIL ADDRESS"><input type="email" value={accountEmail} onChange={(event) => setAccountEmail(event.target.value)} required /></Field>
-          <Field label="ROLE"><select value={role} onChange={(event) => setRole(event.target.value as AdminUser["role"])}><option>Student</option><option>Lecturer</option><option>Admin</option></select></Field>
-          <Field label="ACCOUNT STATUS"><select value={status} onChange={(event) => setStatus(event.target.value as AdminUser["status"])}><option>Active</option><option>Inactive</option><option>Pending</option></select></Field>
+          <Field label="FULL NAME"><input value={name} onChange={(event) => setName(event.target.value)} maxLength={100} aria-invalid={!!errors.name} />{errors.name && <small className="field-error">{errors.name}</small>}</Field>
+          <Field label="EMAIL ADDRESS"><input type="email" value={accountEmail} onChange={(event) => setAccountEmail(event.target.value)} maxLength={255} aria-invalid={!!errors.email} />{errors.email && <small className="field-error">{errors.email}</small>}</Field>
+          <Field label="ROLE"><select value={role} disabled={currentUser.email.toLowerCase() === session?.email.toLowerCase()} onChange={(event) => setRole(event.target.value as AdminUser["role"])}><option>Student</option><option>Lecturer</option><option>Admin</option></select></Field>
+          <Field label="ACCOUNT STATUS"><select value={status} disabled={currentUser.email.toLowerCase() === session?.email.toLowerCase()} onChange={(event) => setStatus(event.target.value as AdminUser["status"])}><option>Active</option><option>Inactive</option></select></Field>
         </div>
+        <div className="account-secret">
+          <div><span>Password</span><button type="button" className="text-button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide" : "Show"}</button></div>
+          <code>{passwordText(currentUser.password, showPassword)}</code>
+          {!currentUser.password && <small>No password on file. Use Reset password to set one.</small>}
+        </div>
+        {currentUser.email.toLowerCase() === session?.email.toLowerCase() && <p className="admin-muted">You cannot change your own role, deactivate your own account, or remove it.</p>}
         {notice && <Notice>{notice}</Notice>}
-        <div className="admin-edit-actions"><Link className="button admin-button" to="/admin/users">Cancel</Link><button className="button primary admin-button" disabled={saving}>{saving ? "Saving..." : "Save changes"}</button></div>
+        <div className="admin-edit-actions"><button type="button" className="button admin-button" onClick={() => setResetOpen(true)}>Reset password</button>{currentUser.email.toLowerCase() !== session?.email.toLowerCase() && <button type="button" className="button admin-reject-button" onClick={() => setRemoveOpen(true)}>Remove account</button>}<Link className="button admin-button" to="/admin/users">Cancel</Link><button className="button primary admin-button" disabled={saving}>{saving ? "Saving..." : "Save changes"}</button></div>
       </form>
     </div>
+    {resetOpen && <ResetPasswordDialog email={currentUser.email} name={currentUser.name} onClose={(message, nextPassword) => { setResetOpen(false); if (nextPassword) setCurrentUser((user) => user ? { ...user, password: nextPassword } : user); if (message) setNotice(message); }} />}
+    {removeOpen && <RemoveAccountDialog user={currentUser} onClose={() => setRemoveOpen(false)} onRemoved={() => navigate("/admin/users", { state: { notice: `Removed ${currentUser.email}. This cannot be undone.` } })} />}
     {confirmDeactivationSave && <Dialog title="Deactivate account" onClose={() => setConfirmDeactivationSave(false)} className="admin-dialog">
       <div className="admin-dialog-form">
         <p>Save these changes and deactivate <strong>{currentUser.name}</strong> ({currentUser.email})? They will no longer be able to sign in. Their classes and submissions will be retained.</p>
         <div className="admin-dialog-actions"><button type="button" className="button" onClick={() => setConfirmDeactivationSave(false)}>Cancel</button><button type="button" className="button admin-reject-button" onClick={() => void persistAccount()}>Save and deactivate</button></div>
       </div>
     </Dialog>}
-  </div>;
-}
-
-function RejectLecturerDialog({
-  request,
-  onClose,
-  onReject,
-}: {
-  request: any;
-  onClose: () => void;
-  onReject: (reason: string) => void;
-}) {
-  const [reason, setReason] = useState("");
-  return <Dialog title="Reject lecturer request" onClose={onClose} className="admin-reject-dialog">
-    <form className="admin-dialog-form" onSubmit={(event) => { event.preventDefault(); onReject(reason.trim()); }}>
-      <p className="admin-muted">{request.name} · {request.email}</p>
-      <Field label="REASON (OPTIONAL, SENT TO APPLICANT)">
-        <textarea rows={3} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Explain why this request was declined…" />
-      </Field>
-      <div className="admin-dialog-actions">
-        <button type="button" className="button admin-button" onClick={onClose}>Cancel</button>
-        <button className="button admin-button admin-reject-button">Reject request</button>
-      </div>
-    </form>
-  </Dialog>;
-}
-
-export function AdminLecturerApprovalsPage() {
-  const [requests, setRequests] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
-  const [selectedEmail, setSelectedEmail] = useState("");
-  const [rejecting, setRejecting] = useState<any | null>(null);
-  const [notice, setNotice] = useState("");
-
-  useEffect(() => {
-    adminService.getLecturerRequests().then(data => {
-      setRequests(data);
-      if (data.length > 0) setSelectedEmail(data[0].email);
-      setLoading(false);
-    }).catch(err => {
-      setLoadError(err instanceof Error ? err.message : "Could not load lecturer requests.");
-      setLoading(false);
-    });
-  }, []);
-
-  const selected = requests.find((request) => request.email === selectedEmail) || requests[0];
-
-  async function resolveRequest(request: any, approved: boolean, reason = "") {
-    try {
-      if (approved) {
-        await adminService.approveLecturerRequest(request.id);
-        setNotice(`${request.name} was approved as a lecturer.`);
-      } else {
-        await adminService.rejectLecturerRequest(request.id);
-        setNotice(`${request.name}'s request was rejected.${reason ? " The reason was not sent because the server does not accept it." : ""}`);
-      }
-      const next = requests.filter((item) => item.email !== request.email);
-      setRequests(next);
-      setSelectedEmail(next[0]?.email || "");
-      setRejecting(null);
-    } catch (err: any) {
-      setNotice(err.message || "Action failed.");
-      setRejecting(null);
-    }
-  }
-
-  return <div className="admin-page admin-approvals-page">
-    <PageIntro title="Lecturer approvals" sub={`People & access / ${requests.length} pending lecturer requests`} />
-    <div className="admin-section-tabs">
-      <Link to="/admin/users">All users</Link>
-      <Link className="active" to="/admin/users/approvals">Lecturer approvals ({requests.length})</Link>
-    </div>
-    {notice && <Notice>{notice}</Notice>}
-    {loading ? <Loading label="Loading lecturer requests…" /> : loadError ? <p className="admin-notice" role="alert">{loadError}</p> :
-      <Split main={<>
-        <div className="admin-table-wrap sticky-list-table-wrap"><table className="admin-table sticky-list-table admin-approval-table"><thead><tr><th>NAME / EMAIL</th><th>DEPARTMENT</th><th>SUBMITTED</th><th>STATUS</th></tr></thead><tbody>
-          {requests.map((request) => <tr key={request.email} className={request.email === selected?.email ? "is-selected" : ""} onClick={() => setSelectedEmail(request.email)}>
-            <td data-label="NAME / EMAIL"><button className="admin-row-link" type="button" onClick={() => setSelectedEmail(request.email)}>{request.name}</button><small>{request.email}</small></td>
-            <td data-label="DEPARTMENT">{request.department}</td><td data-label="SUBMITTED">{request.submitted}</td><td data-label="STATUS" className="admin-warning">Pending</td>
-          </tr>)}
-          {!requests.length && <tr><td colSpan={4} className="admin-muted">No lecturer registrations are waiting for approval.</td></tr>}
-        </tbody></table></div>
-        <p className="admin-table-footer">Showing {requests.length} pending requests</p>
-      </>} side={selected ? <>
-        <h2>Request details</h2><h3 className="admin-detail-title">{selected.name}</h3><p className="admin-muted">{selected.email}</p><div className="admin-detail-divider" />
-        <Field label="DEPARTMENT"><input value={selected.department} readOnly /></Field>
-        <p className="admin-warning admin-detail-status">Pending · Submitted {selected.submitted}</p>
-        <p className="admin-muted">Registered as Lecturer<br />Lecturer access stays locked until approved.</p>
-        <button className="button primary admin-button" type="button" onClick={() => resolveRequest(selected, true)}>Approve lecturer</button>
-        <div className="admin-detail-divider" />
-        <button className="admin-danger-link" type="button" onClick={() => setRejecting(selected)}>Reject request</button>
-        <p className="admin-muted">Lecturer access stays locked. The server does not send the entered reason.</p>
-      </> : <><h2>Request details</h2><p className="admin-muted">There are no pending lecturer requests.</p></>} />}
-    {rejecting && <RejectLecturerDialog request={rejecting} onClose={() => setRejecting(null)} onReject={(reason) => resolveRequest(rejecting, false, reason)} />}
   </div>;
 }
 
@@ -1072,84 +1153,6 @@ function OverviewPagination({ total, page, onPageChange, label }: { total: numbe
   </nav>;
 }
 
-function OverviewLecturerApprovalsPanel({ onClose, onResolved }: { onClose: () => void; onResolved: (pendingCount: number) => void }) {
-  const [requests, setRequests] = useState<(AdminLecturerRequest & { id: string })[]>([]);
-  const [selectedId, setSelectedId] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [confirmReject, setConfirmReject] = useState(false);
-  const selected = requests.find(request => request.id === selectedId) || requests[0];
-
-  async function loadRequests() {
-    setLoading(true);
-    setError("");
-    try {
-      const data = await adminService.getLecturerRequests();
-      setRequests(data);
-      setSelectedId(data[0]?.id || "");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load lecturer requests.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void loadRequests();
-  }, []);
-
-  async function resolveRequest(approved: boolean) {
-    if (!selected || busy) return;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      if (approved) await adminService.approveLecturerRequest(selected.id);
-      else await adminService.rejectLecturerRequest(selected.id);
-      const remaining = requests.filter(request => request.id !== selected.id);
-      setRequests(remaining);
-      setSelectedId(remaining[0]?.id || "");
-      setConfirmReject(false);
-      setNotice(approved ? selected.name + " was approved as a lecturer." : selected.name + "'s request was rejected.");
-      onResolved(remaining.length);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update this request.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return <div className="admin-overview-approvals">
-    <div className="admin-overview-panel-header"><h2>Lecturer approvals</h2><button type="button" className="text-button" disabled={busy} onClick={onClose}>Close</button></div>
-    {loading ? <Loading label="Loading lecturer requests…" /> : <>
-      {notice && <Notice>{notice}</Notice>}
-      {error && <p className="admin-warning" role="alert">{error}</p>}
-      {selected ? <>
-        <Field label={"PENDING REQUESTS (" + requests.length + ")"}><select value={selected.id} disabled={busy} onChange={event => { setSelectedId(event.target.value); setConfirmReject(false); setError(""); setNotice(""); }}>{requests.map(request => <option key={request.id} value={request.id}>{request.name} · {request.email}</option>)}</select></Field>
-        <div className="admin-detail-divider" />
-        <h3 className="admin-detail-title">{selected.name}</h3>
-        <dl className="teacher-list-detail-facts">
-          <div><dt>Email</dt><dd>{selected.email}</dd></div>
-          <div><dt>Department</dt><dd>{selected.department || "—"}</dd></div>
-          <div><dt>Submitted</dt><dd>{selected.submitted || "—"}</dd></div>
-        </dl>
-        {confirmReject ? <div className="admin-overview-reject-confirm">
-          <p>Reject the registration for <strong>{selected.name}</strong>?</p>
-          <div className="admin-overview-request-actions"><button type="button" className="button admin-button" disabled={busy} onClick={() => setConfirmReject(false)}>Cancel</button><button type="button" className="button admin-button admin-reject-button" disabled={busy} onClick={() => void resolveRequest(false)}>{busy ? "Rejecting…" : "Confirm rejection"}</button></div>
-        </div> : <div className="admin-overview-request-actions">
-          <button type="button" className="button primary admin-button" disabled={busy} onClick={() => void resolveRequest(true)}>{busy ? "Approving…" : "Approve lecturer"}</button>
-          <button type="button" className="button admin-button admin-reject-button" disabled={busy} onClick={() => setConfirmReject(true)}>Reject request</button>
-        </div>}
-      </> : error ? <button type="button" className="button admin-button" onClick={() => void loadRequests()}>Retry</button> : <>
-        <p className="admin-muted">No pending requests.</p>
-        <button type="button" className="text-button" onClick={() => void loadRequests()}>Refresh</button>
-      </>}
-    </>}
-  </div>;
-}
-
 function OverviewActivityPanel({ activity, onClose }: { activity: any; onClose: () => void }) {
   const [classes, setClasses] = useState<AdminClass[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -1197,7 +1200,7 @@ function OverviewActivityPanel({ activity, onClose }: { activity: any; onClose: 
       </>}
       {actor && <>
         <div className="admin-detail-divider" /><h3 className="admin-subheading">Current account information</h3>
-        <dl className="teacher-list-detail-facts"><div><dt>Email</dt><dd>{actor.email}</dd></div><div><dt>Role</dt><dd>{actor.role}</dd></div><div><dt>Status</dt><dd>{actor.status}</dd></div><div><dt>Joined</dt><dd>{actor.joined}</dd></div>{actor.detail && <div><dt>Department</dt><dd>{actor.detail}</dd></div>}</dl>
+        <dl className="teacher-list-detail-facts"><div><dt>Email</dt><dd>{actor.email}</dd></div><div><dt>Role</dt><dd>{actor.role}</dd></div><div><dt>Status</dt><dd>{actor.status}</dd></div><div><dt>Joined</dt><dd>{actor.joined}</dd></div></dl>
       </>}
     </>}
     <details className="admin-overview-record-reference"><summary>Record reference</summary><p className="admin-muted">{activity.id}</p></details>
@@ -1254,7 +1257,6 @@ export function AdminOverviewPage() {
   const [activityPage, setActivityPage] = useState(1);
   const pageSize = 10;
   const attentionItems = [
-    { id: "registrations", title: "Lecturer registrations", count: stats.pendingRequests, unit: "pending" },
     { id: "unassigned", title: "Classes without a lecturer", count: stats.unassignedClasses, unit: "class(es)" },
   ];
   const currentAttentionPage = Math.min(attentionPage, Math.max(1, Math.ceil(attentionItems.length / pageSize)));
@@ -1336,10 +1338,7 @@ export function AdminOverviewPage() {
           </tbody></table>
         </div>
       </section>
-    </>} side={selection?.type === "attention" && selection.id === "registrations" ? <OverviewLecturerApprovalsPanel onClose={() => setSelection(null)} onResolved={pendingCount => {
-      setStats(current => ({ ...current, pendingRequests: pendingCount }));
-      adminService.getActivities().then(setActivities).catch(console.error);
-    }} /> : selection?.type === "attention" && selection.id === "unassigned" ? <OverviewUnassignedClassesPanel onClose={() => setSelection(null)} /> : selectedActivity ? <OverviewActivityPanel key={selectedActivity.id} activity={selectedActivity} onClose={() => setSelection(null)} /> : <>
+    </>} side={selection?.type === "attention" && selection.id === "unassigned" ? <OverviewUnassignedClassesPanel onClose={() => setSelection(null)} /> : selectedActivity ? <OverviewActivityPanel key={selectedActivity.id} activity={selectedActivity} onClose={() => setSelection(null)} /> : <>
       <h2>Grading health</h2><p className={stats.gradingErrors === 0 ? "admin-health" : "admin-health admin-warning"}>{stats.gradingErrors === 0 ? "Operational" : "Needs Attention"}</p><p className="admin-muted">{stats.submissionsToday} submitted today / {stats.gradingErrors} need attention</p><div className="admin-detail-divider" /><h3 className="admin-subheading">Recent errors</h3>
       {errors.length > 0 ? errors.map(err => <p key={err.id} className="admin-warning admin-error">#{err.id.substring(0, 8)} · {err.errorType}<br />{err.problemTitle}</p>) : <p className="admin-muted">No errors recently</p>}
     </>} />

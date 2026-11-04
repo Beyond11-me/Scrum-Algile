@@ -39,7 +39,7 @@ body:has(.compact-tables-page) { overflow: hidden; }
 
 /* Single-table management pages use the same bounded scrolling contract. */
 .admin-page.compact-admin-list-page { display: flex; flex-direction: column; gap: 12px; }
-.compact-admin-list-page > .admin-user-filter-row,.compact-admin-list-page > .admin-pending-banner,.compact-admin-list-page > .admin-notice { flex: none; margin: 0; }
+.compact-admin-list-page > .admin-user-filter-row,.compact-admin-list-page > .admin-users-toolbar,.compact-admin-list-page > .admin-pending-banner,.compact-admin-list-page > .admin-notice { flex: none; margin: 0; }
 .compact-admin-list-page > .admin-split { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); align-items: stretch; gap: 20px; overflow: hidden; }
 .compact-admin-list-page > .admin-split > .admin-primary { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .compact-admin-list-page > .admin-split > .admin-side { position: static; align-self: stretch; min-height: 0; max-height: none; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
@@ -53,7 +53,7 @@ body:has(.compact-tables-page) { overflow: hidden; }
 @media (max-width: 760px) {
   .compact-admin-list-page > .admin-split { grid-template-columns: minmax(0, 1fr); }
   .compact-admin-list-page > .admin-split > .admin-side { display: none; }
-  .compact-admin-list-page.show-user-details > .admin-split > .admin-primary,.compact-admin-list-page.show-user-details > .admin-user-filter-row { display: none; }
+  .compact-admin-list-page.show-user-details > .admin-split > .admin-primary,.compact-admin-list-page.show-user-details > .admin-user-filter-row,.compact-admin-list-page.show-user-details > .admin-users-toolbar { display: none; }
   .compact-admin-list-page.show-user-details > .admin-split > .admin-side { display: block; }
   .admin-compact-panel-header > .compact-panel-back { display: inline-flex; }
   .compact-admin-list-page .admin-user-filter-row { grid-template-columns: minmax(0, 1fr); gap: 10px; }

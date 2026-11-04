@@ -22,7 +22,6 @@ PUBLIC_API_PATHS = frozenset(
         "/api/auth/token",
         "/api/auth/login",
         "/api/auth/register",
-        "/api/auth/register-lecturer",
         "/api/auth/demo",
     }
 )

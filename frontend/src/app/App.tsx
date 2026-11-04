@@ -12,13 +12,10 @@ import {
   TeacherRoute,
 } from "../components/ProtectedRoute";
 import {
-  ForgotPasswordPage,
   LoginPage,
   RegisterPage,
-  RegisterLecturerPage,
-  ResetPasswordPage,
-  VerifyOtpPage,
 } from "../pages/auth/AuthPages";
+import { AccountPage } from "../pages/account/AccountPage";
 import { AssignmentsPage } from "../pages/student/AssignmentsPage";
 import { AssignmentWorkPage } from "../pages/student/AssignmentWorkPage";
 import { AssignmentDetailPage } from "../pages/student/AssignmentDetailPage";
@@ -33,7 +30,6 @@ import { ManualReviewPage, ResultsDashboardPage } from "../pages/teacher/Results
 import {
   AdminUsersPage,
   AdminEditAccountPage,
-  AdminLecturerApprovalsPage,
   AdminRolesPage,
   AdminCoursesPage,
   AdminEditClassPage,
@@ -114,10 +110,6 @@ export function App() {
         <Route element={<PublicOnlyRoute />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/register-lecturer" element={<RegisterLecturerPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/verify-otp" element={<VerifyOtpPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={["student"]} />}>
           <Route element={<Shell />}>
@@ -132,6 +124,7 @@ export function App() {
             />
             <Route path="/problems" element={<ProblemListPage />} />
             <Route path="/submissions" element={<SubmissionsPage />} />
+            <Route path="/account" element={<AccountPage />} />
             <Route path="/practice" element={<Navigate replace to="/problems" />} />
             <Route path="/dashboard" element={<Navigate replace to="/assignments" />} />
             <Route path="/contests" element={<Navigate replace to="/assignments" />} />
@@ -157,6 +150,7 @@ export function App() {
             <Route path="classes" element={<ClassesPage />} />
             <Route path="results" element={<ResultsDashboardPage />} />
             <Route path="results/review/:submissionId" element={<ManualReviewPage />} />
+            <Route path="account" element={<AccountPage />} />
             <Route path="*" element={<Navigate replace to="problems" />} />
           </Route>
         </Route>
@@ -165,7 +159,7 @@ export function App() {
             <Route index element={<Navigate replace to="users" />} />
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="users/:email/edit" element={<AdminEditAccountPage />} />
-            <Route path="users/approvals" element={<AdminLecturerApprovalsPage />} />
+            <Route path="account" element={<AccountPage />} />
             <Route path="roles" element={<AdminRolesPage />} />
             <Route path="courses" element={<AdminCoursesPage />} />
             <Route path="classes" element={<AdminCoursesPage />} />

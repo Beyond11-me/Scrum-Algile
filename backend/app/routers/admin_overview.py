@@ -47,10 +47,7 @@ def get_overview_stats(db: Session = Depends(get_db), _: User = Depends(require_
         (Submission.result.ilike("%timeout%"))
     ).count()
     
-    pending_requests = db.query(User).filter(
-        User.role == "instructor",
-        User.status == "Pending"
-    ).count()
+    pending_requests = 0
     
     unassigned_classes = db.query(Class).filter(
         Class.status != "Archived",

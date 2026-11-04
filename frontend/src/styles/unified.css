@@ -8,10 +8,13 @@
 .header-theme-toggle:hover { border-color:var(--accent); color:var(--accent); }
 .header-theme-toggle + .role-account,.role-student .header-theme-toggle { margin-left:0; }
 .role-account .avatar { width:32px; height:32px; }
-.role-account-menu { position:absolute; top:calc(100% + 16px); right:0; z-index:50; width:210px; padding:10px; border:1px solid var(--border); border-radius:var(--radius-lg); background:var(--surface); box-shadow:0 12px 28px #0f111521; display:grid; gap:3px; }
-.role-account-menu > b,.role-account-menu > small { padding:2px 6px; }
-.role-account-menu button { display:flex; align-items:center; gap:8px; min-height:35px; width:100%; border:0; border-radius:var(--radius-sm); padding:7px; text-align:left; font-size:12px; }
-.role-account-menu button:hover,.role-account-menu button[aria-pressed="true"] { background:var(--accent-subtle); color:var(--accent); }
+.role-account-menu { position:absolute; top:calc(100% + 16px); right:0; z-index:50; width:240px; padding:8px; border:1px solid var(--border); border-radius:var(--radius-lg); background:var(--surface); box-shadow:0 12px 28px #0f111521; display:grid; gap:2px; }
+.role-account-menu-head { display:grid; gap:2px; margin-bottom:4px; padding:8px 8px 10px; border-bottom:1px solid var(--border); }
+.role-account-menu-head b { font-size:13px; line-height:18px; }
+.role-account-menu-head small,.role-account-menu > small { padding:2px 8px; color:var(--muted); }
+.role-account-menu-head small { padding:0; overflow-wrap:anywhere; }
+.role-account-menu a,.role-account-menu button { display:flex; align-items:center; gap:8px; min-height:36px; width:100%; border:0; border-radius:var(--radius-sm); padding:7px 8px; text-align:left; font-size:12px; font-weight:600; color:var(--text); text-decoration:none; }
+.role-account-menu a:hover,.role-account-menu button:hover,.role-account-menu button[aria-pressed="true"] { background:var(--accent-subtle); color:var(--accent); }
 .teacher-main,.admin-main { background:var(--canvas); }
 .teacher-page,.admin-page { max-width:var(--content-width); min-height:calc(100dvh - var(--header-height)); padding:30px 24px 56px; background:transparent; }
 .teacher-page-intro,.admin-page-intro { min-height:unset; margin-bottom:20px; padding:0 0 18px; border-bottom:1px solid var(--border); }

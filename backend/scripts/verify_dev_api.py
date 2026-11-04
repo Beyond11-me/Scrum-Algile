@@ -103,8 +103,8 @@ def verify():
     call(teacher, "GET", "/api/admin/users", 403)
 
     users = call(admin, "GET", "/api/admin/users")
-    assert len(users) >= 12 and {u["status"] for u in users} >= {"Active", "Inactive", "Pending"}
-    assert len(call(admin, "GET", "/api/admin/users/lecturer-requests")) >= 1
+    statuses = {u["status"] for u in users}
+    assert len(users) >= 12 and {"Active", "Inactive"} <= statuses and "Pending" not in statuses
     assert len(call(admin, "GET", "/api/admin/classes")) >= 3
     stats = call(admin, "GET", "/api/admin/overview/stats")
     assert stats["users"] == len(users) and stats["unassignedClasses"] >= 1
