@@ -1,0 +1,10 @@
+/* Centered auth pages: the form sits in a raised card on the page background. See DESIGN.md. */
+.auth-page--centered { --auth-page-bg: var(--canvas); --auth-card-shadow: 0 12px 32px #1018281f; background: var(--auth-page-bg); }
+:root[data-theme="dark"] .auth-page--centered { --auth-page-bg: #131315; --auth-card-shadow: 0 16px 40px #00000080; }
+.auth-page--centered .auth-form-panel { box-sizing: border-box; padding: 40px 16px; background: var(--auth-page-bg); }
+.auth-page--centered .auth-form-wrap { width: 100%; max-width: 440px; box-sizing: border-box; padding: 32px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--auth-card-shadow); }
+
+@media (max-width: 480px) {
+  .auth-page--centered .auth-form-panel { padding: 24px 16px; }
+  .auth-page--centered .auth-form-wrap { padding: 24px 20px; }
+}

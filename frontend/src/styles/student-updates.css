@@ -1453,11 +1453,6 @@ body:has(.assignment-work-page), body:has(.scope-detail-page) { background: var(
   .auth-page--split .preview-result b { margin-top:3px; }
   .auth-page--split .auth-form-panel { height:100dvh; min-height:0; overflow-y:auto; align-items:center; background:var(--canvas); }
   .auth-page--split .auth-form-wrap { margin:auto; padding:20px 0; }
-  .auth-page--register .auth-form-wrap .auth-heading { margin-bottom:16px; }
-  .auth-page--register .auth-form-wrap form { gap:9px; }
-  .auth-page--register .auth-form-wrap .field { gap:3px; }
-  .auth-page--register .auth-form-wrap input { min-height:34px; }
-  .auth-page--register .auth-form-wrap .button.primary { min-height:36px; }
 }
 /* Returning-student overview. */
 .dashboard-page { max-width: 1314px; padding-top: 32px; }
