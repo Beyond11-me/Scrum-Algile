@@ -13,6 +13,7 @@ type ProblemRow = {
   topics: string;
   visibility: "Public" | "Private" | string;
   database: string;
+  archivedAt?: string | null;
 };
 
 export function ProblemLibraryPage() {
@@ -21,11 +22,12 @@ export function ProblemLibraryPage() {
   const [problems, setProblemState] = useState<ProblemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   useEffect(() => {
     async function load() {
       try {
-        const data = await teacherService.getAllProblems();
+        const data = await teacherService.getAllProblems(includeArchived);
         const mapped = data.map((p: any) => ({
           id: p.id,
           number: p.number,
@@ -34,6 +36,7 @@ export function ProblemLibraryPage() {
           topics: p.topics && p.topics.length > 0 ? p.topics.join(" · ") : p.topic || "",
           visibility: p.practiceListed ? "Public" : "Private",
           database: p.databaseType || "SQL Server",
+          archivedAt: p.archivedAt || null,
         }));
         setProblemState(mapped);
       } catch (e) {
@@ -43,7 +46,7 @@ export function ProblemLibraryPage() {
       }
     }
     load();
-  }, []);
+  }, [includeArchived]);
 
   const [search, setSearch] = useState("");
   const [difficulty, setDifficulty] = useState("All levels");
@@ -101,17 +104,25 @@ export function ProblemLibraryPage() {
           onRetry={() => window.location.reload()}
         />
       ) : problems.length === 0 ? (
-        <TeacherEmptyState
-          title="No problems yet"
-          description="Create your first SQL problem with a schema, seed data and a reference solution."
-          primaryLabel="New problem"
-          primaryTo="/teacher/problems/new"
-          secondaryLabel="Browse public problems"
-          secondaryTo="/teacher/problems?visibility=Public"
-        />
+        <>
+          <button className="button" type="button" onClick={() => setIncludeArchived((value) => !value)}>
+            {includeArchived ? "Hide archived" : "Show archived"}
+          </button>
+          <TeacherEmptyState
+            title={includeArchived ? "No archived questions" : "No problems yet"}
+            description={includeArchived ? "There are no archived questions in your bank." : "Create your first SQL problem with a schema, seed data and a reference solution."}
+            primaryLabel="New problem"
+            primaryTo="/teacher/problems/new"
+            secondaryLabel="Browse public problems"
+            secondaryTo="/teacher/problems?visibility=Public"
+          />
+        </>
       ) : (
         <>
           <div className="teacher-list-filters teacher-problem-filters">
+            <button className="button" type="button" onClick={() => setIncludeArchived((value) => !value)}>
+              {includeArchived ? "Hide archived" : "Show archived"}
+            </button>
             <TeacherField label="SEARCH">
               <input
                 value={search}
@@ -266,7 +277,10 @@ export function ProblemLibraryPage() {
                     </dl>
                   </div>
                   <div className="teacher-list-detail-actions">
-                    <Link
+                    {selectedProblem.archivedAt ? <button className="button primary" type="button" onClick={async () => {
+                      await teacherService.restoreProblem(selectedProblem.id);
+                      window.location.reload();
+                    }}>Restore</button> : <Link
                       className="button primary"
                       to={
                         selectedProblem.id === "new"
@@ -275,7 +289,7 @@ export function ProblemLibraryPage() {
                       }
                     >
                       Edit
-                    </Link>
+                    </Link>}
                   </div>
                 </>
               ) : (

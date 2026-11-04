@@ -1,23 +1,31 @@
 r"""Idempotent, local-only data for exercising the SQL-UIT product flows.
 
-Run from backend with: ..\.venv\Scripts\python.exe -m scripts.seed_dev_data
-The small, normal seed in scripts.seed remains separate.
+Run from backend with: ``python -m scripts.seed_dev_data``.
+
+For Docker Compose, opt in explicitly because this writes a complete local
+fixture: ``docker compose exec -e ALLOW_DEV_SEED=1 backend python -m
+scripts.seed_dev_data``. The small, normal seed in scripts.seed is run first
+so this command works on a fresh local database too.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import os
 
 from sqlalchemy import text
 
 from app.db.session import SessionLocal
 from app.models import (
-    ActivityLog, Assignment, AssignmentClass, AssignmentProblem, Class,
-    ClassEnrollment, Problem, ProblemTopic, Submission, TestCase,
-    TestCaseScript, Topic, User,
+    ActivityLog, AiChatMessage, AiChatSession, Assignment, AssignmentClass,
+    AssignmentProblem, Class, ClassEnrollment, Favorite, Notification,
+    Problem, ProblemDraft, ProblemList, ProblemListItem, ProblemTopic,
+    Submission, TestCase, TestCaseScript, Topic, User,
 )
 from app.core.security import get_password_hash
 from app.services.rbac import assign_legacy_user_roles, seed_rbac_catalogue
+from migrations.ui_schema_v1 import migrate as migrate_ui_schema
+from scripts.seed import seed_data
 
 
 CUSTOMER_SCHEMA = "CREATE TABLE Customers (customer_id INT, customer_name VARCHAR(80), city VARCHAR(40) NULL);"
@@ -59,7 +67,7 @@ PROBLEMS = [
          description="Find customers who placed at least two orders.", requirements="Return customer_id and order_count, ordered by customer_id.",
          hint="Filter aggregate groups with HAVING.", schema=ORDER_SCHEMA, seed=ORDER_SEED,
          solution="SELECT customer_id, COUNT(*) AS order_count FROM Orders GROUP BY customer_id HAVING COUNT(*) >= 2 ORDER BY customer_id;"),
-    dict(id="dev-join", number="106", title="Customer spending", difficulty="Medium", topics=["JOIN"], public=False,
+    dict(id="dev-join", number="106", title="Customer spending", difficulty="Medium", topics=["JOIN"], public=True,
          description="Calculate total spending for customers with orders.", requirements="Return customer_id, customer_name and total_spent, ordered by customer_id.",
          hint="Join Customers to Orders, then aggregate the amounts.", schema=CUSTOMER_SCHEMA + "\n" + ORDER_SCHEMA,
          seed=CUSTOMER_SEED + "\n" + ORDER_SEED,
@@ -72,14 +80,29 @@ PROBLEMS = [
          description="Find orders larger than the average order amount.", requirements="Return order_id and amount, ordered by order_id.",
          hint="Calculate the average in a scalar subquery.", schema=ORDER_SCHEMA, seed=ORDER_SEED,
          solution="SELECT order_id, amount FROM Orders WHERE amount > (SELECT AVG(CAST(amount AS FLOAT)) FROM Orders) ORDER BY order_id;"),
-    dict(id="dev-cte", number="109", title="High value customers", difficulty="Hard", topics=["CTE"], public=False,
+    dict(id="dev-cte", number="109", title="High value customers", difficulty="Hard", topics=["CTE"], public=True,
          description="Use a common table expression to total each customer's orders.", requirements="Return customer_id and total_spent for totals of at least 150, ordered by customer_id.",
          hint="Build totals in a CTE, then filter the CTE rows.", schema=ORDER_SCHEMA, seed=ORDER_SEED,
          solution="WITH CustomerTotals AS (SELECT customer_id, SUM(amount) AS total_spent FROM Orders GROUP BY customer_id) SELECT customer_id, total_spent FROM CustomerTotals WHERE total_spent >= 150 ORDER BY customer_id;"),
-    dict(id="dev-window", number="110", title="Rank each customer's orders", difficulty="Hard", topics=["WINDOW FUNCTION"], public=False,
+    dict(id="dev-window", number="110", title="Rank each customer's orders", difficulty="Hard", topics=["WINDOW FUNCTION"], public=True,
          description="Number each customer's orders from largest amount to smallest.", requirements="Return customer_id, order_id and purchase_rank; order the final rows by customer_id and purchase_rank.",
          hint="Use ROW_NUMBER with PARTITION BY customer_id.", schema=ORDER_SCHEMA, seed=ORDER_SEED,
          solution="SELECT customer_id, order_id, ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY amount DESC, order_id) AS purchase_rank FROM Orders ORDER BY customer_id, purchase_rank;"),
+    # These stay out of the student catalog. They make the Instructor bank and
+    # Admin Hidden filter testable without breaking active student activities.
+    dict(id="dev-private-join", number="111", title="Private customer totals", difficulty="Medium", topics=["JOIN"], public=False,
+         description="Instructor-only version of the customer spending exercise.", requirements="Return customer_name and total_spent.",
+         hint="Join customers to orders before aggregating.", schema=CUSTOMER_SCHEMA + "\n" + ORDER_SCHEMA,
+         seed=CUSTOMER_SEED + "\n" + ORDER_SEED,
+         solution="SELECT c.customer_name, SUM(o.amount) AS total_spent FROM Customers c JOIN Orders o ON o.customer_id = c.customer_id GROUP BY c.customer_name ORDER BY c.customer_name;"),
+    dict(id="dev-private-cte", number="112", title="Private CTE review", difficulty="Hard", topics=["CTE"], public=False,
+         description="Instructor-only CTE review exercise.", requirements="Return orders above the average amount.",
+         hint="Calculate the average in a CTE before filtering.", schema=ORDER_SCHEMA, seed=ORDER_SEED,
+         solution="WITH AverageAmount AS (SELECT AVG(CAST(amount AS FLOAT)) AS value FROM Orders) SELECT order_id, amount FROM Orders CROSS JOIN AverageAmount WHERE amount > value ORDER BY order_id;"),
+    dict(id="dev-private-window", number="113", title="Private window review", difficulty="Hard", topics=["WINDOW FUNCTION"], public=False,
+         description="Instructor-only window function review exercise.", requirements="Rank products by price.",
+         hint="Use DENSE_RANK over the price ordering.", schema=PRODUCT_SCHEMA, seed=PRODUCT_SEED,
+         solution="SELECT product_name, DENSE_RANK() OVER (ORDER BY price DESC) AS price_rank FROM Products ORDER BY price_rank, product_name;"),
 ]
 
 
@@ -90,7 +113,9 @@ def now_utc() -> datetime:
 def upsert(db, model, record_id, values, counts, category):
     record = db.get(model, record_id)
     if record is None:
-        record = model(id=record_id, **values)
+        # Most fixture tables have a single ``id`` key. Relations such as
+        # favorites use a composite key, which is already contained in values.
+        record = model(**values) if isinstance(record_id, tuple) else model(id=record_id, **values)
         db.add(record)
         counts[category][0] += 1
     else:
@@ -116,15 +141,48 @@ def ensure_user(db, email, record_id, name, role, status, counts):
     return user
 
 
+def allow_dev_seed(database: str, server: str) -> None:
+    """Refuse non-local targets unless an operator explicitly opts in.
+
+    The database-name check deliberately remains in place even with the opt-in
+    flag, which prevents accidentally seeding a differently named production
+    database from a developer shell.
+    """
+
+    is_localdb = "LOCALDB" in (server or "").upper()
+    is_explicit_local_seed = os.getenv("ALLOW_DEV_SEED") == "1"
+    if database.upper() != "SQLUIT" or not (is_localdb or is_explicit_local_seed):
+        raise RuntimeError(
+            "Refusing to seed this database. Use SQLUIT on LocalDB, or set "
+            "ALLOW_DEV_SEED=1 only for your Docker/local development database. "
+            f"Current target: {database} on {server}"
+        )
+
+
 def seed():
     db = SessionLocal()
-    counts = {name: [0, 0] for name in ("users", "classes", "problems", "assignments", "contests", "submissions", "activity_logs")}
+    counts = {name: [0, 0] for name in (
+        "users", "classes", "problems", "assignments", "contests",
+        "submissions", "notifications", "favorites", "lists", "drafts",
+        "ai_sessions", "activity_logs",
+    )}
     try:
+        database, server = db.execute(text("SELECT DB_NAME(), @@SERVERNAME")).one()
+        allow_dev_seed(database, server)
+
+        # Existing local databases predate this UI column. The migration is
+        # idempotent and runs only after the local-target guard above passes.
+        added_columns = migrate_ui_schema()
+        if added_columns:
+            print(f"UI schema columns added: {added_columns}")
+
+        # Create the three primary accounts and RBAC catalogue when this is a
+        # fresh database. ``seed_data`` is idempotent and does not overwrite
+        # an existing demo account password.
+        seed_data()
+        db.rollback()  # Start a fresh transaction after the seed's own commit.
         roles = seed_rbac_catalogue(db)
         assign_legacy_user_roles(db, roles)
-        database, server = db.execute(text("SELECT DB_NAME(), @@SERVERNAME")).one()
-        if database.upper() != "SQLUIT" or "LOCALDB" not in server.upper():
-            raise RuntimeError(f"Refusing to seed non-local SQLUIT database: {database} on {server}")
 
         # Older local databases created users.name as VARCHAR, which replaces
         # Vietnamese characters with '?' before the browser ever sees them.
@@ -143,6 +201,14 @@ def seed():
         lecturer.name = "Giảng Viên"
         admin.name = "Quản Trị Viên"
 
+        fixture_now = now_utc()
+        demo_student.current_streak = 6
+        demo_student.longest_streak = 14
+        demo_student.last_streak_date = fixture_now
+        demo_student.last_active = fixture_now - timedelta(minutes=15)
+        lecturer.last_active = fixture_now - timedelta(hours=2)
+        admin.last_active = fixture_now - timedelta(hours=4)
+
         students = [demo_student]
         for index in range(1, 8):
             students.append(ensure_user(db, f"student{index:02d}@demo.local", f"dev-student-{index:02d}",
@@ -153,7 +219,7 @@ def seed():
         db.flush()
 
         term = "Semester 1, 2026"
-        today = now_utc().date()
+        today = fixture_now.date()
         class_specs = [
             ("IS207.R11", "Web Development", lecturer.id, "Active", students[:6]),
             ("IS201.R12", "Database Systems", lecturer.id, "Active", [students[0], *students[3:8]]),
@@ -190,7 +256,7 @@ def seed():
                 {"script": [0, 0]}, "script")
         db.flush()
 
-        current = now_utc()
+        current = fixture_now
         activities = [
             ("dev-assignment-draft", "Draft SQL warm-up", False, False, 1, 8, ["IS207.R11"], [("dev-select", 10), ("dev-where", 15)]),
             ("dev-assignment-scheduled", "Next week's database lab", False, True, 3, 10, ["IS201.R12"], [("dev-order", 10), ("dev-having", 20), ("dev-subquery", 30)]),
@@ -270,6 +336,56 @@ def seed():
                 database_type="SQL Server", evaluated_score=evaluated, feedback=feedback))
             counts["submissions"][0] += 1
 
+        # Student-facing utilities are seeded as well, so the current UI has
+        # visible notification, saved-problem, draft, and chat-history states.
+        notification_specs = [
+            ("dev-notification-assignment", "New assignment available", "Customer analytics lab is open and due next week.", "Assignment", False, "/assignments", 1),
+            ("dev-notification-review", "Submission reviewed", "Your GROUP BY submission received 92/100 with feedback.", "Grading", False, "/submissions", 4),
+            ("dev-notification-streak", "Learning streak", "You have practiced SQL for 6 days in a row.", "Milestone", True, "/problems", 24),
+        ]
+        for record_id, title, message, notification_type, is_read, link, hours_ago in notification_specs:
+            upsert(db, Notification, record_id, dict(
+                user_id=demo_student.id, title=title, message=message,
+                type=notification_type, is_read=is_read, link=link,
+                created_at=current - timedelta(hours=hours_ago),
+            ), counts, "notifications")
+
+        for problem_id in ("dev-select", "dev-group", "dev-subquery"):
+            upsert(db, Favorite, (demo_student.id, problem_id), dict(
+                user_id=demo_student.id, problem_id=problem_id,
+                created_at=current - timedelta(days=2),
+            ), counts, "favorites")
+
+        saved_list = upsert(db, ProblemList, "dev-list-analytics", dict(
+            user_id=demo_student.id, name="Analytics practice",
+            created_at=current - timedelta(days=3),
+        ), counts, "lists")
+        db.flush()
+        db.query(ProblemListItem).filter(ProblemListItem.list_id == saved_list.id).delete(synchronize_session=False)
+        for problem_id in ("dev-group", "dev-having", "dev-join"):
+            db.add(ProblemListItem(list_id=saved_list.id, problem_id=problem_id))
+
+        upsert(db, ProblemDraft, "dev-draft-select", dict(
+            user_id=demo_student.id, problem_id="dev-select",
+            draft_query="SELECT customer_id, customer_name\nFROM Customers\nORDER BY customer_id;",
+        ), counts, "drafts")
+
+        chat_session = upsert(db, AiChatSession, "dev-ai-session-select", dict(
+            user_id=demo_student.id, problem_id="dev-select",
+            created_at=current - timedelta(days=1), updated_at=current - timedelta(hours=6),
+        ), counts, "ai_sessions")
+        db.flush()
+        upsert(db, AiChatMessage, "dev-ai-message-question", dict(
+            session_id=chat_session.id, role="user",
+            content="How should I decide which columns to return?",
+            created_at=current - timedelta(days=1, minutes=2),
+        ), {"ai_messages": [0, 0]}, "ai_messages")
+        upsert(db, AiChatMessage, "dev-ai-message-answer", dict(
+            session_id=chat_session.id, role="ai",
+            content="Start with the columns named in the requirements, then check the requested sort order.",
+            created_at=current - timedelta(days=1),
+        ), {"ai_messages": [0, 0]}, "ai_messages")
+
         for index, (actor, action) in enumerate([
             (lecturer, "Published customer analytics lab"),
             (lecturer, "Scheduled database lab"),
@@ -281,7 +397,7 @@ def seed():
                 created_at=current - timedelta(hours=index + 1)), counts, "activity_logs")
 
         db.commit()
-        for category in ("users", "classes", "problems", "assignments", "contests", "submissions", "activity_logs"):
+        for category in ("users", "classes", "problems", "assignments", "contests", "submissions", "notifications", "favorites", "lists", "drafts", "ai_sessions", "activity_logs"):
             created, reused = counts[category]
             print(f"{category.replace('_', ' ').title()} created/reused: {created}/{reused}")
         print("Local SQLUIT development data ready.")
