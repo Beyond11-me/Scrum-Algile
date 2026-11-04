@@ -438,7 +438,6 @@
 
 .admin-row-link:hover {
     color: var(--accent);
-    text-decoration: underline;
 }
 
 .admin-table-footer {

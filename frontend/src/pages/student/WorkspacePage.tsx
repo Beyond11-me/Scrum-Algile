@@ -9,7 +9,7 @@ import {
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import CodeMirror from "@uiw/react-codemirror";
 import { EditorView } from "@codemirror/view";
-import { Check, ChevronRight, Database, Lightbulb, Lock, Play, Star, RotateCcw, Maximize2, Minimize2, Braces, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Database, Lightbulb, Lock, Play, Star, RotateCcw, Maximize2, Minimize2, Braces, X } from "lucide-react";
 import { indentRange } from "@codemirror/language";
 import { AppHeader } from "../../components/AppHeader";
 import { DataGrid, Dialog, Empty, Loading, Status } from "../../components/ui";
@@ -20,6 +20,8 @@ import { storage } from "../../services/storage";
 import type { DataTable, Problem, Submission } from "../../data/models";
 import { parseDatabaseSchema } from "../../utils/parseDatabaseSchema";
 import { parseSeedData } from "../../utils/parseSeedData";
+import { formatSql } from "../../utils/formatSql";
+import { selectOnKey } from "../../utils/selectOnKey";
 import { submissionTimeLabel } from "../../utils/serverDateTime";
 import { AiChatPanel } from "../../components/AiChatPanel";
 import { sqlCodeExtensions } from "../../components/sqlCodeTheme";
@@ -85,6 +87,12 @@ const editorTheme = EditorView.theme({
 }, { dark: true });
 
 const editorExtensions = [...sqlCodeExtensions(true), editorTheme];
+// tabindex keeps the read-only code reachable for keyboard scrolling.
+const submissionCodeExtensions = [
+  ...editorExtensions,
+  EditorView.lineWrapping,
+  EditorView.contentAttributes.of({ tabindex: "0", "aria-label": "Submitted SQL" }),
+];
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
@@ -167,6 +175,9 @@ function Workspace({ problem }: { problem: Problem }) {
     () => studentApi.getDraft(problem.id) ?? (problem.draft || ""),
   );
   const [selected, setSelected] = useState("");
+  // Shown read-only over the editor, which stays mounted so the draft and its undo history survive.
+  const [viewedSubmission, setViewedSubmission] = useState<Submission | null>(null);
+  const [viewedSql, setViewedSql] = useState("");
   const [problemTab, setProblemTab] = useState("Description");
   const [resultTab, setResultTab] = useState("Result");
   const [mobileTab, setMobileTab] = useState("Problem");
@@ -232,6 +243,22 @@ function Workspace({ problem }: { problem: Problem }) {
     } finally {
       setFavoriteBusy(false);
     }
+  }
+  useEffect(() => {
+    let active = true;
+    const query = viewedSubmission?.query || "";
+    setViewedSql(query);
+    // Unparseable SQL stays as the student wrote it.
+    if (query) formatSql(query, viewedSubmission?.database).then((formatted) => { if (active) setViewedSql(formatted); }).catch(() => undefined);
+    return () => { active = false; };
+  }, [viewedSubmission]);
+  function viewSubmission(submission: Submission) {
+    setViewedSubmission(submission);
+    setMobileTab("SQL");
+  }
+  function backToDraft() {
+    setViewedSubmission(null);
+    requestAnimationFrame(() => editor.current?.focus());
   }
   function closeAiPanel() {
     setIsAiPanelOpen(false);
@@ -555,7 +582,14 @@ function Workspace({ problem }: { problem: Problem }) {
                       <table className="data-table">
                         <thead><tr><th>Result</th><th>Score</th><th>Source</th><th>Submitted</th></tr></thead>
                         <tbody>{submissions.data.map((item) => (
-                          <tr key={item.id}>
+                          <tr
+                            key={item.id}
+                            className={viewedSubmission?.id === item.id ? "selected" : undefined}
+                            tabIndex={0}
+                            aria-current={viewedSubmission?.id === item.id ? "true" : undefined}
+                            onClick={() => viewSubmission(item)}
+                            onKeyDown={(event) => selectOnKey(event, () => viewSubmission(item))}
+                          >
                             <td><Status value={item.result} /></td>
                             <td>{item.score}/{item.maxScore ?? 100}</td>
                             <td>{item.source}</td>
@@ -638,7 +672,21 @@ function Workspace({ problem }: { problem: Problem }) {
               }
               aria-label="SQL editor"
             >
-              <div className="editor-toolbar">
+              {viewedSubmission ? (
+                <div className="editor-toolbar">
+                  <div className="editor-toolbar-group editor-submission-info">
+                    <Status value={viewedSubmission.result} />
+                    <span>{viewedSubmission.score}/{viewedSubmission.maxScore ?? 100}</span>
+                    <span>{submissionTimeLabel(viewedSubmission.submittedAt)}</span>
+                  </div>
+                  <div className="editor-toolbar-group">
+                    <button className="editor-run" type="button" onClick={backToDraft}>
+                      <ArrowLeft size={14} aria-hidden="true" />
+                      Back to my draft
+                    </button>
+                  </div>
+                </div>
+              ) : <div className="editor-toolbar">
                 <div className="editor-toolbar-group">
                   <span className="editor-dialect"><Database size={14} aria-hidden="true" />SQL Server</span>
                   <button
@@ -705,9 +753,23 @@ function Workspace({ problem }: { problem: Problem }) {
                       : contestClosed ? "Submissions closed" : "Submit"}
                   </button>
                 </div>
-              </div>
+              </div>}
+              {viewedSubmission && (
+                <div className="sql-editor">
+                  <CodeMirror
+                    value={viewedSql || "-- SQL snapshot is unavailable for this submission."}
+                    height="100%"
+                    theme="none"
+                    editable={false}
+                    readOnly
+                    extensions={submissionCodeExtensions}
+                    basicSetup={{ foldGutter: false, highlightActiveLine: false, highlightActiveLineGutter: false }}
+                  />
+                </div>
+              )}
               <div
                 className="sql-editor"
+                hidden={!!viewedSubmission}
                 onKeyDownCapture={(event) => {
                   if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
                     event.preventDefault();
@@ -741,8 +803,14 @@ function Workspace({ problem }: { problem: Problem }) {
                 />
               </div>
               <div className="editor-statusbar">
-                <span>Draft saved locally</span>
-                <span className="cursor-position">Ln {cursor.line}, Col {cursor.column}</span>
+                {viewedSubmission ? (
+                  <span>Submitted SQL · Read-only · Your draft is unchanged</span>
+                ) : (
+                  <>
+                    <span>Draft saved locally</span>
+                    <span className="cursor-position">Ln {cursor.line}, Col {cursor.column}</span>
+                  </>
+                )}
               </div>
             </section>
             <div
