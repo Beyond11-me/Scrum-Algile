@@ -1,5 +1,20 @@
 import { apiFetch } from "./apiClient";
+import { storage } from "./storage";
 import type { TeacherClass, TeacherClassMember } from "../data/teacherTypes";
+
+export type RosterImportResult = {
+  enrolled: number;
+  added: number;
+  notFound: number;
+  reportRows: number;
+  reportCsv: string;
+  filename: string;
+};
+
+function rosterHeaderCount(response: Response, name: string): number {
+  const value = Number(response.headers.get(name) || 0);
+  return Number.isFinite(value) ? value : 0;
+}
 
 export interface ClassCreate {
   id: string;
@@ -65,6 +80,36 @@ export const teacherService = {
 
   async getAllProblems(includeArchived = false): Promise<any[]> {
     return apiFetch(`/api/problems${includeArchived ? "?include_archived=true" : ""}`);
+  },
+
+  async importClassMembers(classId: string, file: File): Promise<RosterImportResult> {
+    const token = storage.get("sql-practice:access-token");
+    const body = new FormData();
+    body.append("file", file);
+    const baseUrl = import.meta.env.VITE_API_URL || "";
+    const response = await fetch(`${baseUrl}/api/teacher/classes/${encodeURIComponent(classId)}/members/import`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body,
+    });
+    if (!response.ok) {
+      const isJson = response.headers.get("content-type")?.includes("application/json");
+      const data = isJson ? await response.json() : await response.text();
+      const message = typeof data === "string" ? data : data?.detail || "Could not import the CSV roster.";
+      throw new Error(typeof message === "string" ? message : "Could not import the CSV roster.");
+    }
+
+    const reportCsv = await response.text();
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const named = disposition.match(/filename="([^"]+)"/);
+    return {
+      enrolled: rosterHeaderCount(response, "X-Roster-Enrolled"),
+      added: rosterHeaderCount(response, "X-Roster-Added"),
+      notFound: rosterHeaderCount(response, "X-Roster-Not-Found"),
+      reportRows: rosterHeaderCount(response, "X-Roster-Report-Rows"),
+      reportCsv,
+      filename: named?.[1] || `${classId}-roster-import-result.csv`,
+    };
   },
 
   async getProblem(id: string): Promise<any> {

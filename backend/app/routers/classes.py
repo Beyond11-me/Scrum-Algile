@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
@@ -7,6 +8,7 @@ import uuid
 from app.db.session import SessionLocal
 from app import models, schemas
 from app.services.authorization import get_role_code, require_permission
+from app.services.roster_import import enroll_from_roster
 
 router = APIRouter()
 
@@ -21,6 +23,17 @@ def check_instructor_role(
     current_user: models.User = Depends(require_permission("class.manage_assigned")),
 ):
     return current_user
+
+
+def require_assigned_class(db: Session, class_id: str, current_user: models.User) -> models.Class:
+    """Roster add/remove/import belongs to the lecturer assigned to the class."""
+    owned = db.query(models.Class).filter(
+        models.Class.id == class_id,
+        models.Class.instructor_id == current_user.id,
+    ).first()
+    if not owned:
+        raise HTTPException(status_code=404, detail="Class not found or you don't have access")
+    return owned
 
 @router.get("/students", response_model=List[schemas.ClassMemberResponse])
 def get_all_students(db: Session = Depends(get_db), current_user: models.User = Depends(check_instructor_role)):
@@ -126,13 +139,8 @@ def add_class_member(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(check_instructor_role)
 ):
-    if get_role_code(current_user) == "admin":
-        c = db.query(models.Class).filter(models.Class.id == class_id).first()
-    else:
-        c = db.query(models.Class).filter(models.Class.id == class_id, models.Class.instructor_id == current_user.id).first()
-    if not c:
-        raise HTTPException(status_code=404, detail="Class not found or you don't have access")
-        
+    require_assigned_class(db, class_id, current_user)
+
     student = db.query(models.User).filter(models.User.id == member_data.student_id).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
@@ -170,13 +178,8 @@ def remove_class_member(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(check_instructor_role)
 ):
-    if get_role_code(current_user) == "admin":
-        c = db.query(models.Class).filter(models.Class.id == class_id).first()
-    else:
-        c = db.query(models.Class).filter(models.Class.id == class_id, models.Class.instructor_id == current_user.id).first()
-    if not c:
-        raise HTTPException(status_code=404, detail="Class not found or you don't have access")
-        
+    require_assigned_class(db, class_id, current_user)
+
     enrollment = db.query(models.ClassEnrollment).filter(
         models.ClassEnrollment.class_id == class_id,
         models.ClassEnrollment.student_id == student_id
@@ -189,3 +192,33 @@ def remove_class_member(
     db.commit()
     
     return {"message": "Member removed successfully"}
+
+@router.post("/{class_id}/members/import")
+def import_class_members(
+    class_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(check_instructor_role)
+):
+    """Lecturers enroll students on their assigned class from a UIT-email CSV."""
+    require_assigned_class(db, class_id, current_user)
+
+    raw = file.file.read()
+    try:
+        outcome = enroll_from_roster(db, class_id, raw, current_user.id)
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail="The file must be a UTF-8 CSV.") from None
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from None
+
+    return Response(
+        content=outcome.report_csv.encode("utf-8-sig"),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="{outcome.filename}"',
+            "X-Roster-Enrolled": str(outcome.enrolled),
+            "X-Roster-Added": str(outcome.added),
+            "X-Roster-Not-Found": str(outcome.not_found),
+            "X-Roster-Report-Rows": str(outcome.report_rows),
+        },
+    )

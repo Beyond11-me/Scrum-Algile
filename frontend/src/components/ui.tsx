@@ -111,10 +111,18 @@ export function Dialog({
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => {
+    const node = dialog.current;
     const previous = document.activeElement as HTMLElement | null;
     const previousScroll = { x: window.scrollX, y: window.scrollY };
-    dialog.current?.showModal();
+    // A cancelled file picker fires `cancel` from the input. That event bubbles
+    // to this dialog and would otherwise close it.
+    const ignoreNestedCancel = (event: Event) => {
+      if (event.target !== node) event.stopPropagation();
+    };
+    node?.addEventListener("cancel", ignoreNestedCancel, true);
+    node?.showModal();
     return () => {
+      node?.removeEventListener("cancel", ignoreNestedCancel, true);
       previous?.focus({ preventScroll: true });
       window.scrollTo(previousScroll.x, previousScroll.y);
     };
@@ -124,8 +132,9 @@ export function Dialog({
       ref={dialog}
       className={"dialog " + className}
       aria-labelledby={titleId}
-      onCancel={(e) => {
-        e.preventDefault();
+      onCancel={(event) => {
+        event.preventDefault();
+        if (event.target !== event.currentTarget) return;
         if (closeOnCancel) onClose();
       }}
       onClick={(e) => {
