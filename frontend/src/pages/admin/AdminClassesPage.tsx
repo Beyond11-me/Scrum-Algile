@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Dialog, Empty, ErrorState, Loading } from "../../components/ui";
+import { AdminOnlyButton } from "../../components/withRoleAccess";
 import {
   adminCapabilities,
   defaultAdminRolePolicy,
@@ -172,7 +173,7 @@ export function AdminUsersPage() {
       </div>
       <div className="admin-user-actions">
         <button className="button admin-button" onClick={exportCsv} disabled={users.length === 0}>Export all CSV</button>
-        <button className="button primary admin-button" onClick={() => setDialog(true)}>Add user</button>
+        <AdminOnlyButton className="button primary admin-button" onClick={() => setDialog(true)}>Add user</AdminOnlyButton>
       </div>
     </div>
     {notice && <Notice>{notice}</Notice>}

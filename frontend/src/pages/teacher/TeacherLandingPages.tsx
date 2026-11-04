@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ErrorState, Loading } from "../../components/ui";
+import { InstructorOnlyButton } from "../../components/withRoleAccess";
 import { teacherService } from "../../services/teacherService";
 import { TeacherField } from "./TeacherPageParts";
 
@@ -147,13 +148,13 @@ export function ProblemLibraryPage() {
                 <option>Private</option>
               </select>
             </TeacherField>
-            <button
+            <InstructorOnlyButton
               className="button primary teacher-problem-new"
               type="button"
               onClick={() => navigate("/teacher/problems/new")}
             >
               New problem
-            </button>
+            </InstructorOnlyButton>
           </div>
           <div className="teacher-list-detail-layout">
             <div className="teacher-list-detail-main">
@@ -401,13 +402,13 @@ export function AssignmentsListPage() {
                 <option>Closed</option>
               </select>
             </TeacherField>
-            <button
+            <InstructorOnlyButton
               className="button primary teacher-problem-new"
               type="button"
               onClick={() => navigate("/teacher/assignments/new")}
             >
               New assignment
-            </button>
+            </InstructorOnlyButton>
           </div>
           <div className="teacher-list-detail-layout">
             <div className="teacher-list-detail-main">

@@ -1,37 +1,39 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { hasRole, homeForRole, type AppRole } from "../auth/roles";
 import { useAuth } from "../context/AuthContext";
 
-export function ProtectedRoute() {
+type RouteGuardProps = {
+  allowedRoles?: readonly AppRole[];
+};
+
+/** Redirect unauthenticated or unauthorized users before rendering a route. */
+export function RouteGuard({ allowedRoles }: RouteGuardProps) {
   const { session } = useAuth();
   const location = useLocation();
-  if (session?.role === "admin") {
-    return <Navigate to="/admin/classes" replace />;
+  if (!session) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: location.pathname + location.search + location.hash }}
+      />
+    );
   }
-  if (session?.role === "instructor") {
-    return <Navigate to="/teacher/problems" replace />;
+  if (allowedRoles && !hasRole(session.role, allowedRoles)) {
+    return <Navigate to={homeForRole(session.role)} replace />;
   }
-  return session ? (
-    <Outlet />
-  ) : (
-    <Navigate
-      to="/login"
-      replace
-      state={{ from: location.pathname + location.search + location.hash }}
-    />
-  );
+  return <Outlet />;
+}
+
+export function ProtectedRoute({ allowedRoles }: RouteGuardProps) {
+  return <RouteGuard allowedRoles={allowedRoles} />;
 }
 
 export function PublicOnlyRoute() {
   const session = useAuth().session;
   return session ? (
     <Navigate
-      to={
-        session.role === "admin"
-          ? "/admin/classes"
-          : session.role === "instructor"
-            ? "/teacher/problems"
-            : "/assignments"
-      }
+      to={homeForRole(session.role)}
       replace
     />
   ) : (
@@ -40,39 +42,9 @@ export function PublicOnlyRoute() {
 }
 
 export function TeacherRoute() {
-  const { session } = useAuth();
-  const location = useLocation();
-  if (!session) {
-    return (
-      <Navigate
-        to="/login"
-        replace
-        state={{ from: location.pathname + location.search + location.hash }}
-      />
-    );
-  }
-  return session.role === "instructor" ? (
-    <Outlet />
-  ) : (
-    <Navigate to={session.role === "admin" ? "/admin/classes" : "/assignments"} replace />
-  );
+  return <RouteGuard allowedRoles={["instructor"]} />;
 }
 
 export function AdminRoute() {
-  const { session } = useAuth();
-  const location = useLocation();
-  if (!session) {
-    return (
-      <Navigate
-        to="/login"
-        replace
-        state={{ from: location.pathname + location.search + location.hash }}
-      />
-    );
-  }
-  return session.role === "admin" ? (
-    <Outlet />
-  ) : (
-    <Navigate to={session.role === "instructor" ? "/teacher/problems" : "/assignments"} replace />
-  );
+  return <RouteGuard allowedRoles={["admin"]} />;
 }

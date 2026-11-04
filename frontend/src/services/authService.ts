@@ -1,12 +1,13 @@
 import { storage } from "./storage";
 import { apiFetch } from "./apiClient";
+import { normalizeRole, type AppRole } from "../auth/roles";
 
 export type StudentSession = {
   id: string;
   name: string;
   initials: string;
   email: string;
-  role: "student" | "instructor" | "admin";
+  role: AppRole;
 };
 
 export const SESSION_KEY = "sql-practice:session:v1";
@@ -16,10 +17,20 @@ let sessionVersion = 0;
 export const validEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 function persist(user: StudentSession, token: string) {
+  const normalizedUser = normalizeSession(user);
+  if (!normalizedUser) throw new Error("The server returned an invalid account role.");
   sessionVersion += 1;
-  storage.set(SESSION_KEY, JSON.stringify(user));
+  storage.set(SESSION_KEY, JSON.stringify(normalizedUser));
   storage.set(TOKEN_KEY, token);
-  return user;
+  return normalizedUser;
+}
+
+function normalizeSession(value: unknown): StudentSession | null {
+  if (!value || typeof value !== "object") return null;
+  const user = value as Partial<StudentSession>;
+  const role = normalizeRole(user.role);
+  if (!role || !user.id || !user.name || !user.initials || !user.email) return null;
+  return { id: user.id, name: user.name, initials: user.initials, email: user.email, role };
 }
 
 export const authService = {
@@ -76,8 +87,13 @@ export const authService = {
     try {
       const user = await apiFetch("/api/auth/me");
       if (sessionVersion !== version || storage.get(TOKEN_KEY) !== token) return null;
-      storage.set(SESSION_KEY, JSON.stringify(user));
-      return user;
+      const restoredUser = normalizeSession(user);
+      if (!restoredUser) {
+        authService.logout();
+        return null;
+      }
+      storage.set(SESSION_KEY, JSON.stringify(restoredUser));
+      return restoredUser;
     } catch {
       if (sessionVersion === version && storage.get(TOKEN_KEY) === token) authService.logout();
       return null;
@@ -87,9 +103,7 @@ export const authService = {
   restoreSession(): StudentSession | null {
     try {
       const value = JSON.parse(storage.get(SESSION_KEY) || "null");
-      if (value && value.id) {
-        return value as StudentSession;
-      }
+      return normalizeSession(value);
     } catch {
       /* Ignore malformed sessions. */
     }
