@@ -198,7 +198,7 @@ def _is_hidden_case(tc: Any) -> bool:
     return bool(tc.get('is_hidden', False) if isinstance(tc, dict) else getattr(tc, 'is_hidden', False))
 
 
-def run_sandbox(db: Session, problem: Problem, query: str, is_submit: bool) -> Dict[str, Any]:
+def run_sandbox(db: Session, problem: Problem, query: str, is_submit: bool, allow_hidden: bool = True) -> Dict[str, Any]:
     # Returned by runs only, and never for a hidden test case.
     sample_expected = None
     try:
@@ -226,6 +226,8 @@ def run_sandbox(db: Session, problem: Problem, query: str, is_submit: bool) -> D
         if not is_submit:
             visible_cases = [tc for tc in test_cases if not _is_hidden_case(tc)]
             if not visible_cases:
+                if not allow_hidden:
+                    raise SandboxError("This problem has no public test case to run.")
                 visible_cases = [test_cases[0]]
             test_cases_to_run = visible_cases[:1]
         else:

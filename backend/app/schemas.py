@@ -78,11 +78,19 @@ class ProblemDetailResponse(ProblemBase):
     reference_solution: Optional[str] = Field(default="", alias="referenceSolution")
     test_cases: Optional[List[Any]] = Field(default=None, alias="testCases")
     progress: Optional[str] = None
+    submission_count: int = Field(default=0, alias="submissionCount")
 
 class TestCaseCreate(CamelModel):
     schema_sql: Optional[str] = Field(default="", alias="schema")
     seed_data: str = Field(..., alias="seedData")
     is_hidden: bool = False
+
+    @field_validator("seed_data")
+    @classmethod
+    def seed_must_not_be_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Seed data is required for every test case.")
+        return value
 
 class ProblemCreate(CamelModel):
     number: str
@@ -99,7 +107,7 @@ class ProblemCreate(CamelModel):
     reference_solution: str = Field(..., alias="referenceSolution")
     test_cases: Optional[List[TestCaseCreate]] = Field(default=None, alias="testCases")
 
-    @field_validator("number", "title", "statement", "reference_solution")
+    @field_validator("number", "title", "statement", "requirements", "reference_solution")
     @classmethod
     def required_text_must_not_be_blank(cls, value: str) -> str:
         if not value.strip():
@@ -122,6 +130,8 @@ class ProblemCreate(CamelModel):
             raise ValueError("Schema SQL is required.")
         if self.test_cases and any(not (case.schema_sql or self.schema_sql).strip() for case in self.test_cases):
             raise ValueError("Each test case must include a schema.")
+        if not self.test_cases and not self.seed_data.strip():
+            raise ValueError("Seed data is required.")
         return self
 
 class ProblemValidateRequest(CamelModel):

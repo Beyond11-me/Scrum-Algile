@@ -1,6 +1,8 @@
 """Regression coverage for instructor-owned SQL question banks."""
 import unittest
 import uuid
+import sqlite3
+from unittest.mock import patch
 
 from fastapi import HTTPException
 from pydantic import ValidationError
@@ -12,9 +14,26 @@ from app.models import (
 )
 from app.routers.problems import (
     create_problem, delete_problem, get_problem, get_problems,
-    restore_problem, update_problem, validate_problem_solution,
+    restore_problem, run_query, submit_query, update_problem, validate_problem_solution,
 )
-from app.schemas import ProblemCreate, ProblemValidateRequest
+from app.schemas import ProblemCreate, ProblemValidateRequest, QueryRequest
+from app.services.sandbox import rewrite_query
+
+
+def validate_with_sqlite(_db, schema_sql, seed_data, query):
+    """Exercise the simple fixtures on SQLite in CI; production uses SQL Server."""
+    try:
+        rewrite_query(query)  # Keep the same read-only SQL guard.
+        with sqlite3.connect(":memory:") as connection:
+            connection.executescript(schema_sql)
+            connection.executescript(seed_data)
+            cursor = connection.execute(query)
+            rows = [list(row) for row in cursor.fetchall()]
+            return {"status": "Success", "message": "Validated successfully.", "table": {
+                "columns": [item[0] for item in cursor.description], "rows": rows,
+            }}
+    except Exception as error:
+        return {"status": "Error", "message": str(error)}
 
 
 class TestInstructorQuestionBank(unittest.TestCase):
@@ -24,6 +43,10 @@ class TestInstructorQuestionBank(unittest.TestCase):
 
     def setUp(self):
         self.db = SessionLocal()
+        if engine.dialect.name == "sqlite":
+            validator = patch("app.routers.problems.run_validate_sandbox", side_effect=validate_with_sqlite)
+            validator.start()
+            self.addCleanup(validator.stop)
         suffix = uuid.uuid4().hex[:12]
         self.teacher_a = User(id=f"qa-{suffix}", email=f"qa-{suffix}@test.invalid", hashed_password="x", name="Teacher A", initials="TA", role="instructor")
         self.teacher_b = User(id=f"qb-{suffix}", email=f"qb-{suffix}@test.invalid", hashed_password="x", name="Teacher B", initials="TB", role="instructor")
@@ -60,7 +83,7 @@ class TestInstructorQuestionBank(unittest.TestCase):
         data = {
             "number": "Q-TEST", "title": "Question test", "difficulty": "Easy",
             "visibility": "Public", "topics": "join, Join", "statement": "Return rows",
-            "requirements": "", "hints": [], "database": "SQL Server",
+            "requirements": "Return the id column", "hints": [], "database": "SQL Server",
             "schema": "CREATE TABLE T (id INT);", "seedData": "INSERT INTO T VALUES (1);",
             "referenceSolution": "SELECT id FROM T;",
             "testCases": [
@@ -109,7 +132,7 @@ class TestInstructorQuestionBank(unittest.TestCase):
         self.assertEqual(reloaded.title, "Updated")
         self.assertEqual(len(reloaded.test_cases), 2)
 
-    def test_archive_preserves_submission_and_restore_returns_question_to_bank(self):
+    def test_archive_blocks_submission_and_restore_returns_question_to_bank(self):
         created = self.create_owned_problem()
         submission = Submission(
             id=f"sub-{uuid.uuid4().hex[:12]}", user_id=self.student.id,
@@ -118,9 +141,14 @@ class TestInstructorQuestionBank(unittest.TestCase):
         )
         self.db.add(submission)
         self.db.commit()
-        result = delete_problem(created.id, self.db, self.teacher_a)
-        self.assertIn("preserved", result["message"])
+        self.assertEqual(get_problem(created.id, None, self.db, self.teacher_a).submission_count, 1)
+        with self.assertRaises(HTTPException) as error:
+            delete_problem(created.id, self.db, self.teacher_a)
+        self.assertEqual(error.exception.status_code, 409)
         self.assertEqual(self.db.query(Submission).filter(Submission.id == submission.id).one().score, 100)
+        self.db.delete(submission)
+        self.db.commit()
+        delete_problem(created.id, self.db, self.teacher_a)
         self.assertNotIn(created.id, [item.id for item in get_problems(False, self.db, self.teacher_a)])
         self.assertIn(created.id, [item.id for item in get_problems(True, self.db, self.teacher_a)])
         restore_problem(created.id, self.db, self.teacher_a)
@@ -146,6 +174,56 @@ class TestInstructorQuestionBank(unittest.TestCase):
         with self.assertRaises(HTTPException) as error:
             validate_problem_solution(request, self.db, self.teacher_a)
         self.assertEqual(error.exception.status_code, 400)
+
+    def test_create_rejects_invalid_second_dataset_without_writing_problem_or_tag(self):
+        payload = self.payload(topics="NEWREGRESSIONTAG", testCases=[
+            {"schema": "CREATE TABLE T (id INT);", "seedData": "INSERT INTO T VALUES (1);", "isHidden": False},
+            {"schema": "CREATE TABLE T (id INT);", "seedData": "INSERT INTO Missing VALUES (2);", "isHidden": True},
+        ])
+        with self.assertRaises(HTTPException) as error:
+            create_problem(payload, self.db, self.teacher_a)
+        self.assertEqual(error.exception.status_code, 400)
+        self.assertIn("test case 2", error.exception.detail)
+        self.assertEqual(self.db.query(Problem).filter_by(creator_id=self.teacher_a.id).count(), 0)
+
+    def test_create_and_update_reject_forbidden_reference_query(self):
+        invalid = self.payload(referenceSolution="DELETE FROM T;")
+        with self.assertRaises(HTTPException) as error:
+            create_problem(invalid, self.db, self.teacher_a)
+        self.assertEqual(error.exception.status_code, 400)
+        created = self.create_owned_problem()
+        with self.assertRaises(HTTPException) as error:
+            update_problem(created.id, invalid, self.db, self.teacher_a)
+        self.assertEqual(error.exception.status_code, 400)
+        self.assertEqual(self.db.query(Problem).filter_by(id=created.id).one().title, created.title)
+
+    def test_update_rejects_syntax_error_without_changing_existing_question(self):
+        created = self.create_owned_problem()
+        with self.assertRaises(HTTPException) as error:
+            update_problem(created.id, self.payload(title="Should not save", referenceSolution="SELECT FROM T;"), self.db, self.teacher_a)
+        self.assertEqual(error.exception.status_code, 400)
+        self.assertEqual(get_problem(created.id, None, self.db, self.teacher_a).title, created.title)
+
+    def test_students_cannot_preview_hidden_only_dataset_or_receive_hidden_result(self):
+        created = create_problem(self.payload(testCases=[
+            {"schema": "CREATE TABLE T (id INT);", "seedData": "INSERT INTO T VALUES (1);", "isHidden": True},
+        ]), self.db, self.teacher_a)
+        self.problem_ids.append(created.id)
+        request = QueryRequest(query="SELECT id FROM T;", source="Practice", context="Practice")
+        preview = run_query(created.id, request, self.db, self.student)
+        self.assertEqual(preview["status"], "Runtime Error")
+        self.assertNotIn("table", preview)
+        if engine.dialect.name == "sqlite":
+            with patch("app.routers.problems.run_sandbox", return_value={
+                "status": "Accepted", "message": "Accepted", "table": {"columns": ["id"], "rows": [[1]]},
+                "passed": 1, "total": 1,
+            }):
+                submitted = submit_query(created.id, request, self.db, self.student)
+        else:
+            submitted = submit_query(created.id, request, self.db, self.student)
+        self.assertEqual(submitted["status"], "Accepted")
+        for secret_field in ("table", "passed", "total"):
+            self.assertNotIn(secret_field, submitted)
 
     def test_archive_keeps_question_linked_to_existing_assignment(self):
         created = self.create_owned_problem()
