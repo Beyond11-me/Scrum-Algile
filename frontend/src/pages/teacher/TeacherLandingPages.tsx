@@ -539,6 +539,13 @@ export function AssignmentsListPage() {
                     >
                       Edit assignment
                     </Link>
+                    <InstructorOnlyButton
+                      className="button"
+                      type="button"
+                      onClick={() => navigate(`/teacher/assignments/new?from=${selected.id}`)}
+                    >
+                      Duplicate
+                    </InstructorOnlyButton>
                   </div>
                 </>
               ) : (

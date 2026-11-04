@@ -283,15 +283,6 @@
 .teacher-builder-main { min-width:0; }
 .teacher-builder-setup { display:flex; flex-direction:column; gap:16px; padding-bottom:16px; border-bottom:1px solid var(--border-subtle); }
 .teacher-builder-setup > .teacher-section-title { margin-bottom:0; }
-.teacher-class-picker { position:relative; min-height:47px; border:1px solid var(--border); border-radius:4px; background:var(--surface); }
-.teacher-class-chips { display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-height:45px; padding:6px 8px; }
-.teacher-class-chip { display:flex; align-items:center; gap:5px; padding:4px 6px; border:0; border-radius:3px; background:var(--accent-subtle); color:var(--accent); font-size:11px; }
-.teacher-class-chip span { color:var(--muted); }
-.teacher-add-class { border:0; padding:4px; color:var(--accent); font-size:11px; }
-.teacher-class-options { position:absolute; z-index:8; top:calc(100% + 4px); left:0; width:min(100%,320px); display:flex; flex-direction:column; gap:8px; padding:12px; border:1px solid var(--border); border-radius:4px; background:var(--surface); box-shadow:0 8px 24px #0f11151a; }
-.teacher-class-options label { display:flex; align-items:center; gap:8px; color:var(--text); font-size:11px; }
-.teacher-class-options input { width:14px; min-height:14px; accent-color:var(--accent); }
-.teacher-class-options .text-button { align-self:flex-start; margin-top:4px; }
 .teacher-readonly-field { min-height:34px; display:flex; align-items:center; padding:8px 12px; border:1px solid var(--border); border-radius:4px; background:var(--surface); color:var(--text); font-size:11px; }
 .teacher-audience-field { margin:0; padding:0; border:0; }
 .teacher-audience-field legend { padding:0; color:var(--muted); font-size:11px; line-height: 15px; }
@@ -317,6 +308,7 @@
 .teacher-publish-checklist li::before { content:"✓"; margin-right:6px; color:var(--muted); }
 .teacher-publish-checklist li.is-valid { color:var(--success); }
 .teacher-publish-checklist li.is-valid::before { color:var(--success); }
+.teacher-builder-notice { margin:0 0 16px; padding:10px 14px; border-radius:var(--radius-md); background:var(--accent-subtle); color:var(--accent); font-size:12px; line-height:18px; }
 .teacher-draft-visibility,.teacher-form-message { margin:12px 0; color:var(--muted); font-size:11px; line-height:16px; }
 .teacher-form-message { color:var(--accent); }
 .dialog.teacher-activity-preview-dialog { width:min(1040px,calc(100vw - 32px)); max-height:90dvh; }
