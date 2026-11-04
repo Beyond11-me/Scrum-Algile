@@ -1,9 +1,88 @@
 import { useEffect, useMemo, useState, useRef } from "react";
+import CodeMirror from "@uiw/react-codemirror";
+import { EditorView } from "@codemirror/view";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Dialog, ErrorState, Loading } from "../../components/ui";
 import { TeacherField, TeacherPageIntro, TeacherSectionTitle } from "./TeacherPageParts";
 import { teacherService, type TeacherSubmissionItem } from "../../services/teacherService";
 import { useLoad } from "../../components/useLoad";
+import { sqlCodeExtensions } from "../../components/sqlCodeTheme";
+import { useTheme } from "../../context/ThemeContext";
+import { formatSql } from "../../utils/formatSql";
+
+const SQL_BLOCK_MIN_HEIGHT = 72;
+const SQL_BLOCK_KEY_STEP = 40;
+
+/** Read-only SQL with a full-width drag handle. The browser's own resize corner shrinks with the app's 4px scrollbars and is too small to grab reliably. */
+function ReviewSqlBlock({ label, query }: { label: string; query: string }) {
+  const [code, setCode] = useState(query);
+  const [height, setHeight] = useState<number | null>(null);
+  const codeRef = useRef<HTMLDivElement>(null);
+  const { dark } = useTheme();
+  const extensions = useMemo(
+    // tabindex keeps the read-only code reachable for keyboard scrolling.
+    () => [...sqlCodeExtensions(dark), EditorView.contentAttributes.of({ tabindex: "0", "aria-label": label })],
+    [dark, label],
+  );
+  const drag = useRef<{ startY: number; startHeight: number } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setCode(query);
+    // Unparseable SQL stays as the student wrote it.
+    formatSql(query).then((formatted) => { if (active) setCode(formatted); }).catch(() => undefined);
+    return () => { active = false; };
+  }, [query]);
+
+  const currentHeight = () => codeRef.current?.getBoundingClientRect().height ?? SQL_BLOCK_MIN_HEIGHT;
+  const resizeTo = (next: number) => {
+    setHeight(Math.max(SQL_BLOCK_MIN_HEIGHT, Math.min(window.innerHeight * 0.8, next)));
+  };
+
+  return (
+    <div className="teacher-sql-block">
+      <div
+        ref={codeRef}
+        className={`teacher-sql-code${height === null ? "" : " is-resized"}`}
+        style={height === null ? undefined : { height }}
+      >
+        <CodeMirror
+          value={code}
+          theme="none"
+          editable={false}
+          readOnly
+          extensions={extensions}
+          basicSetup={{ lineNumbers: true, foldGutter: false, highlightActiveLine: false, highlightActiveLineGutter: false }}
+        />
+      </div>
+      <div
+        className="teacher-sql-resize"
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label={`Resize ${label}`}
+        aria-valuenow={Math.round(height ?? SQL_BLOCK_MIN_HEIGHT)}
+        tabIndex={0}
+        title="Drag to resize. Double-click to reset."
+        onPointerDown={(event) => {
+          event.preventDefault();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          drag.current = { startY: event.clientY, startHeight: currentHeight() };
+        }}
+        onPointerMove={(event) => {
+          if (drag.current) resizeTo(drag.current.startHeight + event.clientY - drag.current.startY);
+        }}
+        onPointerUp={() => { drag.current = null; }}
+        onPointerCancel={() => { drag.current = null; }}
+        onDoubleClick={() => setHeight(null)}
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+          event.preventDefault();
+          resizeTo(currentHeight() + (event.key === "ArrowDown" ? SQL_BLOCK_KEY_STEP : -SQL_BLOCK_KEY_STEP));
+        }}
+      />
+    </div>
+  );
+}
 
 export function ResultsDashboardPage() {
   const navigate = useNavigate();
@@ -212,11 +291,13 @@ export function ManualReviewPage() {
           </div>
           <section className="teacher-review-code-section">
             <h2>Student SQL · submitted {activeAttempt.submittedAt}</h2>
-            <pre className="teacher-readonly-code"><code>{activeAttempt.query}</code></pre>
+            <ReviewSqlBlock label="Student SQL" query={activeAttempt.query} />
           </section>
           <section className="teacher-review-code-section">
             <h2>Reference SQL</h2>
-            <pre className="teacher-readonly-code"><code>{submission.referenceSolution || "No reference solution provided"}</code></pre>
+            {submission.referenceSolution
+              ? <ReviewSqlBlock label="Reference SQL" query={submission.referenceSolution} />
+              : <p className="tiny muted">No reference solution provided</p>}
           </section>
           <p className="tiny muted">Per-test-case results are unavailable for this submission.</p>
         </div>

@@ -416,7 +416,7 @@ export function AssignmentsListPage() {
                 ref={tableScrollRef}
                 className="teacher-table-scroll teacher-list-table-scroll sticky-list-table-wrap"
               >
-                <table className="teacher-table teacher-library-table sticky-list-table">
+                <table className="teacher-table teacher-library-table teacher-assignment-list-table sticky-list-table">
                   <thead>
                     <tr>
                       <th>TITLE</th>

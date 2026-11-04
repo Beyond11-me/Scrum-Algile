@@ -1,9 +1,10 @@
 import CodeMirror from "@uiw/react-codemirror";
-import { sql, MSSQL } from "@codemirror/lang-sql";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Dialog, ErrorState, Loading, Status } from "../../components/ui";
 import { ProblemMarkdown } from "../../components/ProblemMarkdown";
+import { sqlCodeExtensions } from "../../components/sqlCodeTheme";
+import { useTheme } from "../../context/ThemeContext";
 import { teacherService } from "../../services/teacherService";
 import { type TeacherProblem } from "../../data/teacherTypes";
 import { TeacherField, TeacherSectionTitle } from "./TeacherPageParts";
@@ -217,6 +218,7 @@ function getSelectedTextSize(editor: HTMLElement, selection: Selection | null): 
 }
 
 function SqlPreview({ value, label, onOpen }: { value: string; label: string; onOpen: () => void }) {
+  const { dark } = useTheme();
   return (
     <div className="teacher-sql-inline-preview" role="button" tabIndex={0} aria-label={label + " — open editor"} aria-haspopup="dialog"
       onClick={(event) => {
@@ -231,13 +233,14 @@ function SqlPreview({ value, label, onOpen }: { value: string; label: string; on
         onOpen();
       }}
       onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); onOpen(); } }}>
-      <CodeMirror value={value} height="140px" editable={false} readOnly extensions={[sql({ dialect: MSSQL })]}
+      <CodeMirror value={value} height="140px" theme="none" editable={false} readOnly extensions={sqlCodeExtensions(dark)}
         basicSetup={{ lineNumbers: true, foldGutter: false, highlightActiveLine: false, highlightActiveLineGutter: false }} />
     </div>
   );
 }
 
 export function ProblemEditorPage() {
+  const { dark } = useTheme();
   const { problemId } = useParams();
   const navigate = useNavigate();
   const selectedId = problemId || "new";
@@ -498,7 +501,7 @@ export function ProblemEditorPage() {
       ? range.startContainer as HTMLElement
       : range.startContainer.parentElement;
     const currentSize = startElement ? parseFloat(window.getComputedStyle(startElement).fontSize) : 12;
-    const nextSize = Math.max(10, Math.min(20, currentSize + delta));
+    const nextSize = Math.max(11, Math.min(20, currentSize + delta));
     const wrapper = document.createElement("span");
     wrapper.style.fontSize = `${nextSize}px`;
     wrapper.appendChild(range.extractContents());
@@ -1036,7 +1039,8 @@ export function ProblemEditorPage() {
               autoFocus
               value={sqlDraft}
               height="clamp(240px, 55dvh, 600px)"
-              extensions={[sql({ dialect: MSSQL })]}
+              theme="none"
+              extensions={sqlCodeExtensions(dark)}
               basicSetup={{ lineNumbers: true, foldGutter: false }}
               onChange={setSqlDraft}
             />
