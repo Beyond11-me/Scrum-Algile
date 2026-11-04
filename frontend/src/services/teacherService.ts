@@ -63,8 +63,8 @@ export const teacherService = {
     });
   },
 
-  async getAllProblems(): Promise<any[]> {
-    return apiFetch("/api/problems");
+  async getAllProblems(includeArchived = false): Promise<any[]> {
+    return apiFetch(`/api/problems${includeArchived ? "?include_archived=true" : ""}`);
   },
 
   async getProblem(id: string): Promise<any> {
@@ -89,6 +89,10 @@ export const teacherService = {
     return apiFetch(`/api/problems/${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
+  },
+
+  async restoreProblem(id: string): Promise<any> {
+    return apiFetch(`/api/problems/${encodeURIComponent(id)}/restore`, { method: "POST" });
   },
 
   async validateSolution(data: any): Promise<any> {

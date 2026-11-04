@@ -99,6 +99,7 @@ class Problem(Base):
     practice_listed = Column(Boolean, default=True)
     database_type = Column(Unicode(50), default="SQL Server")
     creator_id = Column(Unicode(50), ForeignKey("users.id"), nullable=True)
+    archived_at = Column(DateTime, nullable=True, index=True)
     
     # Store JSON strings for schema definitions and expected results (Legacy)
     tables = Column(JSON, nullable=True)   # Array of DataTable definitions

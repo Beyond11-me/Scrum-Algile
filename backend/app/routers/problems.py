@@ -12,6 +12,12 @@ import datetime
 
 router = APIRouter()
 
+def owned_problem_query(db: Session, current_user: User):
+    return db.query(Problem).filter(Problem.creator_id == current_user.id)
+
+def normalize_topics(value: str | None) -> list[str]:
+    return list(dict.fromkeys(topic.strip().upper() for topic in (value or "").split(",") if topic.strip()))
+
 def check_problem_access(db: Session, current_user: User, p: Problem):
     if p.practice_listed:
         return True
@@ -44,11 +50,14 @@ def get_trending(range: str = "Week", db: Session = Depends(get_db)):
     return [TrendingProblem(id=r[0], number=r[1], title=r[2], learners=r[3]) for r in results]
 
 @router.get("", response_model=List[ProblemListResponse])
-def get_problems(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_problems(include_archived: bool = False, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.role == "instructor":
-        problems = db.query(Problem).all()
+        query = owned_problem_query(db, current_user)
+        if not include_archived:
+            query = query.filter(Problem.archived_at.is_(None))
+        problems = query.all()
     else:
-        problems = db.query(Problem).filter(Problem.practice_listed == True).all()
+        problems = db.query(Problem).filter(Problem.practice_listed == True, Problem.archived_at.is_(None)).all()
         
     # Progress cho current_user
     subs = db.query(Submission.problem_id, Submission.result).filter(Submission.user_id == current_user.id).all()
@@ -102,7 +111,10 @@ def get_problem(problem_id: str, context: Optional[str] = None, db: Session = De
     if not p:
         raise HTTPException(status_code=404, detail="Problem not found")
         
-    if not check_problem_access(db, current_user, p):
+    if current_user.role == "instructor":
+        if p.creator_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Problem not found")
+    elif not check_problem_access(db, current_user, p) or p.archived_at is not None:
         raise HTTPException(status_code=403, detail="You don't have permission to view this problem.")
                 
     subs = db.query(Submission.result).filter(
@@ -149,14 +161,11 @@ def update_problem(problem_id: str, problem: ProblemCreate, db: Session = Depend
     if current_user.role != "instructor":
         raise HTTPException(status_code=403, detail="Chỉ Giảng viên mới có quyền sửa bài tập.")
         
-    p = db.query(Problem).filter(Problem.id == problem_id).first()
+    p = owned_problem_query(db, current_user).filter(Problem.id == problem_id, Problem.archived_at.is_(None)).first()
     if not p:
-        raise HTTPException(status_code=404, detail="Problem not found")
+        raise HTTPException(status_code=404, detail="Problem not found in your question bank")
         
-    if p.creator_id and p.creator_id != current_user.id:
-        raise HTTPException(status_code=403, detail="You don't have permission to edit this problem.")
-        
-    topics_list = [t.strip() for t in problem.topics.split(",")] if problem.topics else []
+    topics_list = normalize_topics(problem.topics)
     
     p.number = problem.number
     p.title = problem.title
@@ -220,33 +229,27 @@ def delete_problem(problem_id: str, db: Session = Depends(get_db), current_user:
     if current_user.role != "instructor":
         raise HTTPException(status_code=403, detail="Chỉ Giảng viên mới có quyền xóa bài tập.")
         
-    p = db.query(Problem).filter(Problem.id == problem_id).first()
+    p = owned_problem_query(db, current_user).filter(Problem.id == problem_id, Problem.archived_at.is_(None)).first()
     if not p:
         raise HTTPException(status_code=404, detail="Problem not found")
         
-    if p.creator_id and p.creator_id != current_user.id:
-        raise HTTPException(status_code=403, detail="You don't have permission to delete this problem.")
-        
-    db.query(Submission).filter(Submission.problem_id == problem_id).delete()
-    db.query(ProblemDraft).filter(ProblemDraft.problem_id == problem_id).delete()
-    db.query(Favorite).filter(Favorite.problem_id == problem_id).delete()
-    db.query(ProblemListItem).filter(ProblemListItem.problem_id == problem_id).delete()
-    
-    sessions = db.query(AiChatSession).filter(AiChatSession.problem_id == problem_id).all()
-    for s in sessions:
-        db.query(AiChatMessage).filter(AiChatMessage.session_id == s.id).delete()
-    db.query(AiChatSession).filter(AiChatSession.problem_id == problem_id).delete()
-    
-    db.query(ProblemTopic).filter(ProblemTopic.problem_id == problem_id).delete()
-    
-    tcs = db.query(TestCase).filter(TestCase.problem_id == problem_id).all()
-    for tc in tcs:
-        db.query(TestCaseScript).filter(TestCaseScript.test_case_id == tc.id).delete()
-    db.query(TestCase).filter(TestCase.problem_id == problem_id).delete()
-    
-    db.delete(p)
+    if not p:
+        raise HTTPException(status_code=404, detail="Problem not found in your question bank")
+    p.archived_at = datetime.datetime.utcnow()
+    p.practice_listed = False
     db.commit()
-    return {"message": "Deleted successfully"}
+    return {"message": "Question archived; submissions and scores were preserved."}
+
+@router.post("/{problem_id}/restore")
+def restore_problem(problem_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "instructor":
+        raise HTTPException(status_code=403, detail="Only instructors can restore questions.")
+    p = owned_problem_query(db, current_user).filter(Problem.id == problem_id, Problem.archived_at.is_not(None)).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Archived question not found in your question bank")
+    p.archived_at = None
+    db.commit()
+    return {"message": "Question restored."}
 
 @router.post("", response_model=ProblemDetailResponse)
 def create_problem(problem: ProblemCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -254,7 +257,7 @@ def create_problem(problem: ProblemCreate, db: Session = Depends(get_db), curren
         raise HTTPException(status_code=403, detail="Chỉ Giảng viên mới có quyền tạo bài tập.")
         
     prob_id = str(uuid.uuid4())
-    topics_list = [t.strip() for t in problem.topics.split(",")] if problem.topics else []
+    topics_list = normalize_topics(problem.topics)
     legacy_topic = problem.topics
 
     new_prob = Problem(
@@ -313,9 +316,7 @@ def create_problem(problem: ProblemCreate, db: Session = Depends(get_db), curren
     db.commit()
     db.refresh(new_prob)
     
-    resp = ProblemDetailResponse.model_validate(new_prob)
-    resp.progress = "Not started"
-    return resp
+    return get_problem(prob_id, None, db, current_user)
 
 @router.post("/validate")
 def validate_problem_solution(request: ProblemValidateRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

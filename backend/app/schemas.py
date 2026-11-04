@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, ConfigDict, Field, model_validator
+from pydantic import BaseModel, EmailStr, ConfigDict, Field, model_validator, field_validator
 from pydantic.alias_generators import to_camel
 from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
@@ -66,6 +66,7 @@ class ProblemBase(CamelModel):
     difficulty: str
     practice_listed: bool
     database_type: Optional[str] = "SQL Server"
+    archived_at: Optional[datetime] = None
 
 class ProblemListResponse(ProblemBase):
     progress: Optional[str] = None
@@ -108,6 +109,31 @@ class ProblemCreate(CamelModel):
     seed_data: str = Field(default="", alias="seedData")
     reference_solution: str = Field(..., alias="referenceSolution")
     test_cases: Optional[List[TestCaseCreate]] = Field(default=None, alias="testCases")
+
+    @field_validator("number", "title", "statement", "reference_solution")
+    @classmethod
+    def required_text_must_not_be_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("This field cannot be empty.")
+        return value.strip()
+
+    @field_validator("difficulty")
+    @classmethod
+    def supported_difficulty(cls, value: str) -> str:
+        normalized = value.strip().capitalize()
+        if normalized not in {"Easy", "Medium", "Hard"}:
+            raise ValueError("Difficulty must be Easy, Medium, or Hard.")
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_test_case_count_and_schema(self):
+        if self.test_cases is not None and not 1 <= len(self.test_cases) <= 50:
+            raise ValueError("Provide between 1 and 50 test cases.")
+        if not (self.schema_sql or (self.test_cases and self.test_cases[0].schema_sql)).strip():
+            raise ValueError("Schema SQL is required.")
+        if self.test_cases and any(not (case.schema_sql or self.schema_sql).strip() for case in self.test_cases):
+            raise ValueError("Each test case must include a schema.")
+        return self
 
 class ProblemValidateRequest(CamelModel):
     database: str = "SQL Server"

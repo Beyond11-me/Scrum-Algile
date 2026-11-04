@@ -1050,8 +1050,8 @@ export function ProblemEditorPage() {
       {confirmDelete && (
         <Dialog title="Delete problem" onClose={() => { if (!deleteBusy) setConfirmDelete(false); }}>
           <div className="teacher-preview-dialog">
-            <p>Delete <strong>{problem.number} · {problem.title}</strong>?</p>
-            <p className="muted">This cannot be undone. Related submissions and saved drafts will also be removed.</p>
+            <p>Archive <strong>{problem.number} · {problem.title}</strong>?</p>
+            <p className="muted">The question will leave your active bank. Existing submissions and scores will be kept, and you can restore the question later.</p>
             {deleteError && <p className="teacher-state-failed" role="alert">{deleteError}</p>}
             <div className="teacher-dialog-actions">
               <button className="button" type="button" disabled={deleteBusy} onClick={() => setConfirmDelete(false)}>Cancel</button>

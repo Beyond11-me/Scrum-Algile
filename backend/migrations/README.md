@@ -18,3 +18,10 @@ existing legacy `users.role` value to its new role. It is safe to run again.
 
 The old `users.role` column intentionally remains during the compatibility
 period. Backend response models continue to expose `role` to the frontend.
+
+## Problem archive v1
+
+Run `python -m migrations.problem_archive_v1` from `backend/` before deploying
+archive support. It adds nullable `problems.archived_at` without changing
+submissions. Legacy rows without `creator_id` remain unassigned and are excluded
+from instructors' private question banks until an administrator resolves them.
