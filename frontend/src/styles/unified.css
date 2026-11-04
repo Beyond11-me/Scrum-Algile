@@ -68,9 +68,9 @@
 .teacher-builder-sidebar,.teacher-class-details { position:sticky; top:calc(var(--header-height) + 20px); align-self:start; min-width:0; min-height:0; padding:22px; border:1px solid var(--border); border-radius:var(--radius-lg); background:var(--surface); }
 .teacher-builder-sidebar { padding:16px; }
 .teacher-problem-editor-layout { grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); align-items:stretch; }
-.teacher-problem-footer { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-top:auto; padding-top:16px; border-top:1px solid var(--border-subtle); }
+.teacher-problem-footer { display:flex; flex-direction:column; align-items:stretch; gap:12px; min-width:0; margin-top:auto; padding-top:16px; border-top:1px solid var(--border-subtle); }
 .teacher-problem-footer .teacher-editor-state { margin:0; }
-.teacher-problem-footer .teacher-page-actions { flex:none; width:auto; justify-content:flex-end; }
+.teacher-problem-footer .teacher-page-actions { display:flex; flex-wrap:wrap; gap:8px; width:100%; min-width:0; justify-content:flex-end; }
 .teacher-problem-editor-validation { position:static; top:auto; padding:22px; order:0; align-self:stretch; }
 .teacher-problem-editor-validation > .teacher-section-title { margin-bottom:0; }
 .teacher-problem-editor-layout .teacher-editor-details { gap:0; }
@@ -181,7 +181,7 @@
 .teacher-list-summary small,.teacher-result-metrics small,.teacher-list-footer,.teacher-results-footer small,.admin-table-footer { font-size:11px; line-height:17px; }
 .teacher-list-detail-panel > p,.teacher-list-detail-facts > div,.teacher-empty-state p,.teacher-preview-dialog p,.teacher-draft-visibility,.teacher-form-message,.teacher-option-row b,.teacher-option-row small,.teacher-publish-checklist li,.teacher-timezone,.teacher-visibility-help,.teacher-editor-state,.teacher-seed-summary,.teacher-code-title { font-size:12px; line-height:18px; }
 .teacher-code-editor,.teacher-readonly-code { font-size:12px; }
-.teacher-class-chip,.teacher-class-options label,.teacher-readonly-field,.teacher-add-class,.teacher-add-problem-list small,.teacher-class-detail-heading p,.teacher-class-details > p,.teacher-class-assignment-topline strong,.teacher-class-assignment-topline b,.teacher-class-student-name strong,.teacher-class-student-stat strong,.teacher-table-link,.teacher-class-identity small,.teacher-member-list small,.teacher-review-code-section h2,.teacher-auto-score,.teacher-attempt-label,.teacher-attempt-pill,.teacher-status-review { font-size:11px; line-height:17px; }
+.teacher-readonly-field,.teacher-add-problem-list small,.teacher-class-detail-heading p,.teacher-class-details > p,.teacher-class-assignment-topline strong,.teacher-class-assignment-topline b,.teacher-class-student-name strong,.teacher-class-student-stat strong,.teacher-table-link,.teacher-class-identity small,.teacher-member-list small,.teacher-review-code-section h2,.teacher-auto-score,.teacher-attempt-label,.teacher-attempt-pill,.teacher-status-review { font-size:11px; line-height:17px; }
 .teacher-class-assignment-topline small,.teacher-class-student-name small,.teacher-class-student-stat small,.teacher-detail-eyebrow { font-size:11px; line-height:16px; }
 .teacher-student-search input { min-height:40px; padding:9px 11px; font-size:12px; }
 .teacher-list-actions a,.teacher-list-actions button,.teacher-selectable-row-title,.admin-row-link,.admin-cell-button,.admin-cell-selected,.admin-danger-link,.admin-warning-link { font-size:12px; line-height:18px; }

@@ -120,9 +120,6 @@ export function ProblemLibraryPage() {
       ) : (
         <>
           <div className="teacher-list-filters teacher-problem-filters">
-            <button className="button" type="button" onClick={() => setIncludeArchived((value) => !value)}>
-              {includeArchived ? "Hide archived" : "Show archived"}
-            </button>
             <TeacherField label="SEARCH">
               <input
                 value={search}
@@ -159,6 +156,9 @@ export function ProblemLibraryPage() {
                 <option>Private</option>
               </select>
             </TeacherField>
+            <button className="button teacher-archive-toggle" type="button" onClick={() => setIncludeArchived((value) => !value)}>
+              {includeArchived ? "Hide archived" : "Show archived"}
+            </button>
             <InstructorOnlyButton
               className="button primary teacher-problem-new"
               type="button"
@@ -372,7 +372,7 @@ export function AssignmentsListPage() {
   }, [search, statusFilter]);
 
   return (
-    <section className="teacher-page teacher-library-page compact-teacher-library">
+    <section className="teacher-page teacher-library-page compact-teacher-library teacher-assignment-list-page">
       <h1 className="sr-only">Assignments</h1>
       {loading ? (
         <Loading label="Loading assignments…" />
@@ -393,7 +393,7 @@ export function AssignmentsListPage() {
         />
       ) : (
         <>
-          <div className="teacher-list-filters teacher-problem-filters">
+          <div className="teacher-list-filters teacher-problem-filters teacher-assignment-list-filters">
             <TeacherField label="SEARCH">
               <input
                 value={search}
@@ -539,6 +539,13 @@ export function AssignmentsListPage() {
                     >
                       Edit assignment
                     </Link>
+                    <InstructorOnlyButton
+                      className="button"
+                      type="button"
+                      onClick={() => navigate(`/teacher/assignments/new?from=${selected.id}`)}
+                    >
+                      Duplicate
+                    </InstructorOnlyButton>
                   </div>
                 </>
               ) : (

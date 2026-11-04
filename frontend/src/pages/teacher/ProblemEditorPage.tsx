@@ -287,6 +287,7 @@ export function ProblemEditorPage() {
             referenceSolution: "",
             expectedColumns: [],
             expectedRows: [],
+          submissionCount: 0,
             testCases: [{ seedData: "", isHidden: false }]
           });
           return;
@@ -318,7 +319,8 @@ export function ProblemEditorPage() {
           referenceSolution: data.referenceSolution || "",
           testCases: data.testCases && data.testCases.length > 0 ? data.testCases : [{ seedData: data.seedData || "", isHidden: false }],
           expectedColumns: [],
-          expectedRows: []
+          expectedRows: [],
+          submissionCount: data.submissionCount || 0
         });
         setSaveState("Saved");
       } catch(e) {
@@ -520,17 +522,24 @@ export function ProblemEditorPage() {
     setValidating(true);
     setValidationState("Validating...");
     try {
-      const tc = (problem.testCases || [{seedData: problem.seedData}])[0];
-      const result = await teacherService.validateSolution({
-        database: problem.database,
-        schema: problem.schema,
-        seedData: tc.seedData,
-        referenceSolution: problem.referenceSolution
-      });
+      const datasets = problem.testCases || [{ seedData: problem.seedData, isHidden: false }];
+      let result: any;
+      for (let index = 0; index < datasets.length; index++) {
+        try {
+          result = await teacherService.validateSolution({
+            database: problem.database,
+            schema: problem.schema,
+            seedData: datasets[index].seedData,
+            referenceSolution: problem.referenceSolution
+          });
+        } catch (error) {
+          throw new Error(`Dataset ${index + 1}: ${error instanceof Error ? error.message : "Validation failed"}`);
+        }
+      }
       if ((result.status === "Success" || result.status === "Tabular result") && result.table) {
         update("expectedColumns", result.table.columns);
         update("expectedRows", result.table.rows);
-        setValidationState("Validation passed · Output updated");
+        setValidationState(`Validation passed · ${datasets.length} dataset(s)`);
       } else if (result.status === "Success") {
         setValidationState("Validation passed · no tabular output");
       } else {
@@ -546,6 +555,13 @@ export function ProblemEditorPage() {
   async function saveProblem() {
     if (!problem || saving) return;
     if (!problem.title.trim()) { setSaveState("Enter a title before saving."); return; }
+    if (!problem.statement.trim()) { setSaveState("Enter a statement before saving."); return; }
+    if (!problem.requirements.trim()) { setSaveState("Enter requirements before saving."); return; }
+    if (!problem.schema.trim()) { setSaveState("Enter schema SQL before saving."); return; }
+    if (!problem.referenceSolution.trim()) { setSaveState("Enter a reference solution before saving."); return; }
+    if ((problem.testCases || [{ seedData: problem.seedData }]).some((item) => !item.seedData.trim())) {
+      setSaveState("Enter seed SQL for every dataset before saving."); return;
+    }
     if (otherTopicEnabled && !otherTopic.trim()) {
       setOtherTopicError("Enter a name for the custom topic.");
       setSaveState("Enter a name for the custom topic before saving.");
@@ -1051,11 +1067,11 @@ export function ProblemEditorPage() {
         <Dialog title="Delete problem" onClose={() => { if (!deleteBusy) setConfirmDelete(false); }}>
           <div className="teacher-preview-dialog">
             <p>Archive <strong>{problem.number} · {problem.title}</strong>?</p>
-            <p className="muted">The question will leave your active bank. Existing submissions and scores will be kept, and you can restore the question later.</p>
+            <p className="muted">This question has {problem.submissionCount || 0} submission(s). Questions with submissions cannot be archived; set visibility to Private instead.</p>
             {deleteError && <p className="teacher-state-failed" role="alert">{deleteError}</p>}
             <div className="teacher-dialog-actions">
               <button className="button" type="button" disabled={deleteBusy} onClick={() => setConfirmDelete(false)}>Cancel</button>
-              <button className="button teacher-danger-button" type="button" disabled={deleteBusy} onClick={() => void deleteProblem()}>{deleteBusy ? "Deleting…" : "Delete"}</button>
+              <button className="button teacher-danger-button" type="button" disabled={deleteBusy || (problem.submissionCount || 0) > 0} onClick={() => void deleteProblem()}>{deleteBusy ? "Archiving…" : "Archive"}</button>
             </div>
           </div>
         </Dialog>

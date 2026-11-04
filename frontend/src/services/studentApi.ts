@@ -29,6 +29,7 @@ export type QueryResult = {
   status: string;
   message: string;
   table?: any;
+  expected?: any;
 };
 
 export interface DailySubmission {

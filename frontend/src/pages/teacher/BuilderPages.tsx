@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Dialog, Loading } from "../../components/ui";
 import { teacherService } from "../../services/teacherService";
-import { ClassPicker, TeacherField, TeacherSectionTitle } from "./TeacherPageParts";
+import { TeacherField, TeacherSectionTitle } from "./TeacherPageParts";
 import { toDateTimeLocal } from "../../utils/serverDateTime";
 
 type BuilderProblem = { id: string; points: number };
@@ -27,6 +27,8 @@ const defaultDraft: BuilderDraft = {
   studentOptions: { hints: true, comments: true, aiAllowed: true },
   published: false,
 };
+
+const MULTIPLE_CLASSES = "__multiple__";
 
 function previewDate(value: string) {
   if (!value) return "Not set";
@@ -135,9 +137,12 @@ function AssignmentPreview({
 export function AssignmentBuilderPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isNew = !id || id === "new";
+  const duplicateFromId = isNew ? searchParams.get("from") : null;
 
   const [draft, setDraft] = useState<BuilderDraft | null>(null);
+  const [duplicateNotice, setDuplicateNotice] = useState("");
   const [availableClasses, setAvailableClasses] = useState<any[]>([]);
   const [allProblems, setAllProblems] = useState<any[]>([]);
   const [classesLoading, setClassesLoading] = useState(true);
@@ -148,6 +153,7 @@ export function AssignmentBuilderPage() {
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveState, setSaveState] = useState("");
   const [alertText, setAlertText] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [addProblemOpen, setAddProblemOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [eligibleStudents, setEligibleStudents] = useState<number | null>(null);
@@ -166,9 +172,11 @@ export function AssignmentBuilderPage() {
     }
     fetchClasses();
 
+    const problemsRequest = teacherService.getAllProblems();
+
     async function fetchProblems() {
       try {
-        const data = await teacherService.getAllProblems();
+        const data = await problemsRequest;
         setAllProblems(data);
       } catch (e) {
         setProblemsError(e instanceof Error ? e.message : "Could not load problems.");
@@ -177,6 +185,37 @@ export function AssignmentBuilderPage() {
       }
     }
     fetchProblems();
+
+    setDuplicateNotice("");
+
+    if (duplicateFromId) {
+      // Only the problems carry over. Saving creates a brand-new assignment.
+      const sourceId = duplicateFromId;
+      async function fetchDuplicateSource() {
+        try {
+          const [source, library] = await Promise.all([
+            teacherService.getAssignment(sourceId),
+            problemsRequest,
+          ]);
+          const sourceProblems: BuilderProblem[] = source.problemList || [];
+          const problems = sourceProblems.filter((item) =>
+            library.some((problem) => problem.id === item.id),
+          );
+          const skipped = sourceProblems.length - problems.length;
+          setDraft({ ...defaultDraft, problems });
+          setDuplicateNotice(
+            `Duplicated from "${source.title}". Problems and points were copied. Add a title, class and schedule, then save.` +
+              (skipped
+                ? ` ${skipped} problem${skipped === 1 ? " is" : "s are"} no longer in the library and ${skipped === 1 ? "was" : "were"} left out.`
+                : ""),
+          );
+        } catch (e) {
+          setDraftError(e instanceof Error ? e.message : "Could not load this assignment.");
+        }
+      }
+      fetchDuplicateSource();
+      return;
+    }
 
     if (isNew) {
       setDraft(defaultDraft);
@@ -201,7 +240,7 @@ export function AssignmentBuilderPage() {
       }
     }
     fetchAssignment();
-  }, [id, isNew]);
+  }, [id, isNew, duplicateFromId]);
 
   const selectedIds = draft?.classIds.join("|") || "";
   useEffect(() => {
@@ -295,11 +334,8 @@ export function AssignmentBuilderPage() {
 
       setDraft({ ...draft, published: isPublished });
       setSaveState("All changes saved");
-      setAlertText(isPublished ? "Successfully published." : "Draft saved successfully.");
-
-      if (isNew) {
-        navigate("/teacher/assignments");
-      }
+      setAlertText("");
+      setSuccessMessage(isPublished ? "Successfully published." : "Draft saved successfully.");
     } catch (e) {
       setSaveState(e instanceof Error ? e.message : "Could not save to server.");
     } finally {
@@ -317,12 +353,25 @@ export function AssignmentBuilderPage() {
     (problem) => !draft!.problems.some((item) => item.id === problem.id),
   );
 
+  // Older assignments can still have several classes. Keep them visible and
+  // untouched until the lecturer picks a single class to replace them.
+  const hasMultipleClasses = draft.classIds.length > 1;
+  const classOptions = availableClasses.map((item) => item.id as string);
+  if (draft.classIds.length === 1 && !classOptions.includes(draft.classIds[0])) {
+    classOptions.unshift(draft.classIds[0]);
+  }
+
   return (
     <section className="teacher-page teacher-builder-page">
       <div className="teacher-builder-layout">
         <section className="teacher-builder-main">
           <div className="teacher-builder-setup">
             <TeacherSectionTitle title="Assignment setup" />
+            {duplicateNotice && (
+              <p className="teacher-builder-notice" role="status">
+                {duplicateNotice}
+              </p>
+            )}
             <TeacherField label="TITLE">
               <input
                 value={draft.title}
@@ -330,16 +379,38 @@ export function AssignmentBuilderPage() {
                 placeholder="e.g. Bài thực hành 01: SQL cơ bản"
               />
             </TeacherField>
-            <div className="teacher-field">
-              <span>CLASSES</span>
-              <ClassPicker
-                selected={draft.classIds}
-                onChange={(classes) => update("classIds", classes)}
-                classes={availableClasses}
-                loading={classesLoading}
-                error={classesError}
-              />
-            </div>
+            <TeacherField label="CLASS">
+              <select
+                value={hasMultipleClasses ? MULTIPLE_CLASSES : draft.classIds[0] || ""}
+                disabled={classesLoading}
+                onChange={(event) =>
+                  update("classIds", event.target.value ? [event.target.value] : [])
+                }
+              >
+                <option value="">
+                  {classesLoading
+                    ? "Loading classes…"
+                    : classOptions.length
+                      ? "Select a class"
+                      : "No classes available"}
+                </option>
+                {hasMultipleClasses && (
+                  <option value={MULTIPLE_CLASSES} disabled>
+                    {draft.classIds.join(", ")}
+                  </option>
+                )}
+                {classOptions.map((classId) => (
+                  <option value={classId} key={classId}>
+                    {classId}
+                  </option>
+                ))}
+              </select>
+              {classesError && (
+                <small className="teacher-state-failed" role="alert">
+                  {classesError}
+                </small>
+              )}
+            </TeacherField>
             <TeacherField label="ASSIGNED TO">
               <div className="teacher-readonly-field">
                 {`${draft.classIds.length} ${draft.classIds.length === 1 ? "class" : "classes"}`}
@@ -580,6 +651,22 @@ export function AssignmentBuilderPage() {
             classes={availableClasses}
             problems={allProblems}
           />
+        </Dialog>
+      )}
+      {successMessage && (
+        <Dialog
+          title={isNew ? "Assignment saved" : "Assignment updated"}
+          onClose={() => navigate("/teacher/assignments")}
+          closeOnBackdrop={false}
+          closeOnCancel={false}
+          hideClose
+        >
+          <p role="status">{successMessage}</p>
+          <div className="teacher-page-actions">
+            <button className="button primary" type="button" onClick={() => navigate("/teacher/assignments")} autoFocus>
+              OK
+            </button>
+          </div>
         </Dialog>
       )}
     </section>

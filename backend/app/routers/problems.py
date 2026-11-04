@@ -18,6 +18,14 @@ def owned_problem_query(db: Session, current_user: User):
 def normalize_topics(value: str | None) -> list[str]:
     return list(dict.fromkeys(topic.strip().upper() for topic in (value or "").split(",") if topic.strip()))
 
+def validate_problem_payload(db: Session, problem: ProblemCreate) -> None:
+    cases = problem.test_cases or [TestCaseCreate(schema_sql=problem.schema_sql, seed_data=problem.seed_data)]
+    for index, case in enumerate(cases, 1):
+        result = run_validate_sandbox(db, case.schema_sql or problem.schema_sql, case.seed_data, problem.reference_solution)
+        db.rollback()  # Discard sandbox setup before checking the next dataset or writing the problem.
+        if result["status"] != "Success":
+            raise HTTPException(status_code=400, detail=f"Reference solution failed on test case {index}: {result['message']}")
+
 def check_problem_access(db: Session, current_user: User, p: Problem):
     if p.practice_listed or current_user.role == "admin":
         return True
@@ -195,6 +203,8 @@ def get_problem(problem_id: str, context: Optional[str] = None, db: Session = De
             
     resp = ProblemDetailResponse.model_validate(p)
     resp.progress = progress
+    if current_user.role in ("instructor", "admin"):
+        resp.submission_count = db.query(Submission).filter(Submission.problem_id == p.id).count()
     
     tcs = db.query(TestCase).filter(TestCase.problem_id == p.id).order_by(TestCase.order_index).all()
     if tcs:
@@ -225,9 +235,13 @@ def update_problem(problem_id: str, problem: ProblemCreate, db: Session = Depend
     if current_user.role != "instructor":
         raise HTTPException(status_code=403, detail="Chỉ Giảng viên mới có quyền sửa bài tập.")
         
-    p = owned_problem_query(db, current_user).filter(Problem.id == problem_id, Problem.archived_at.is_(None)).first()
+    p = db.query(Problem).filter(Problem.id == problem_id, Problem.archived_at.is_(None)).first()
     if not p:
-        raise HTTPException(status_code=404, detail="Problem not found in your question bank")
+        raise HTTPException(status_code=404, detail="Problem not found")
+    if p.creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the question owner can edit it.")
+
+    validate_problem_payload(db, problem)
         
     topics_list = normalize_topics(problem.topics)
     
@@ -249,8 +263,7 @@ def update_problem(problem_id: str, problem: ProblemCreate, db: Session = Depend
         if not topic_obj:
             topic_obj = Topic(id=str(uuid.uuid4()), name=t_name)
             db.add(topic_obj)
-            db.commit()
-            db.refresh(topic_obj)
+            db.flush()
         pt = ProblemTopic(problem_id=problem_id, topic_id=topic_obj.id)
         db.add(pt)
         
@@ -284,8 +297,12 @@ def update_problem(problem_id: str, problem: ProblemCreate, db: Session = Depend
         )
         db.add(tcs)
         
-    db.commit()
-    db.refresh(p)
+    try:
+        db.commit()
+        db.refresh(p)
+    except Exception:
+        db.rollback()
+        raise
     return get_problem(problem_id, None, db, current_user)
 
 @router.delete("/{problem_id}")
@@ -293,12 +310,14 @@ def delete_problem(problem_id: str, db: Session = Depends(get_db), current_user:
     if current_user.role != "instructor":
         raise HTTPException(status_code=403, detail="Chỉ Giảng viên mới có quyền xóa bài tập.")
         
-    p = owned_problem_query(db, current_user).filter(Problem.id == problem_id, Problem.archived_at.is_(None)).first()
+    p = db.query(Problem).filter(Problem.id == problem_id, Problem.archived_at.is_(None)).first()
     if not p:
         raise HTTPException(status_code=404, detail="Problem not found")
-        
-    if not p:
-        raise HTTPException(status_code=404, detail="Problem not found in your question bank")
+    if p.creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the question owner can archive it.")
+    submission_count = db.query(Submission).filter(Submission.problem_id == problem_id).count()
+    if submission_count:
+        raise HTTPException(status_code=409, detail=f"Cannot archive: this question has {submission_count} submission(s). Set it to Private instead.")
     p.archived_at = datetime.datetime.utcnow()
     p.practice_listed = False
     db.commit()
@@ -319,6 +338,8 @@ def restore_problem(problem_id: str, db: Session = Depends(get_db), current_user
 def create_problem(problem: ProblemCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.role != "instructor":
         raise HTTPException(status_code=403, detail="Chỉ Giảng viên mới có quyền tạo bài tập.")
+
+    validate_problem_payload(db, problem)
         
     prob_id = str(uuid.uuid4())
     topics_list = normalize_topics(problem.topics)
@@ -346,8 +367,7 @@ def create_problem(problem: ProblemCreate, db: Session = Depends(get_db), curren
         if not topic_obj:
             topic_obj = Topic(id=str(uuid.uuid4()), name=t_name)
             db.add(topic_obj)
-            db.commit()
-            db.refresh(topic_obj)
+            db.flush()
         
         pt = ProblemTopic(problem_id=prob_id, topic_id=topic_obj.id)
         db.add(pt)
@@ -377,8 +397,12 @@ def create_problem(problem: ProblemCreate, db: Session = Depends(get_db), curren
         )
         db.add(tcs)
     
-    db.commit()
-    db.refresh(new_prob)
+    try:
+        db.commit()
+        db.refresh(new_prob)
+    except Exception:
+        db.rollback()
+        raise
     
     return get_problem(prob_id, None, db, current_user)
 
@@ -402,7 +426,7 @@ def run_query(problem_id: str, request: QueryRequest, db: Session = Depends(get_
     elif current_user.role not in ("instructor", "admin"):
         raise HTTPException(status_code=403, detail="You don't have permission to run this problem.")
         
-    result = run_sandbox(db, p, request.query, is_submit=False)
+    result = run_sandbox(db, p, request.query, is_submit=False, allow_hidden=current_user.role != "student")
     return result
 
 @router.post("/{problem_id}/submit")
@@ -472,8 +496,11 @@ def submit_query(problem_id: str, request: QueryRequest, db: Session = Depends(g
     db.commit()
     db.refresh(sub)
     
+    public_result = {key: value for key, value in result.items() if key not in {"table", "passed", "total"}}
+    if current_user.role == "student" and status in {"Partial", "Wrong Answer"}:
+        public_result["message"] = "Kết quả chưa đúng với tất cả bộ kiểm thử."
     return {
-        **result,
+        **public_result,
         "submission_id": sub.id,
         "score": score
     }

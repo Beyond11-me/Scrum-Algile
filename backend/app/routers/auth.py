@@ -5,9 +5,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
-from app.models import User
 from pydantic import BaseModel, ConfigDict, Field
-from app.schemas import UserCreate, LoginRequest, UserResponse, TokenWithUser
+from app.models import User
+from app.schemas import LoginRequest, UserResponse, TokenWithUser
 from app.core.security import apply_password, create_access_token, store_known_password, verify_password
 from app.services.account_policy import (
     CURRENT_PASSWORD,
@@ -19,8 +19,6 @@ from app.services.account_policy import (
     validate_complex_password,
     validate_person_name,
 )
-from app.services.rbac import assign_user_role
-import uuid
 
 router = APIRouter()
 
@@ -46,32 +44,6 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
         db.commit()
     token = create_access_token(data={"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
-
-@router.post("/register", response_model=TokenWithUser)
-def register(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-        
-    parts = user.name.strip().split()
-    initials = "".join([p[0] for p in parts[:2]]).upper() if parts else "ST"
-    
-    new_user = User(
-        id=str(uuid.uuid4()),
-        email=user.email,
-        name=user.name,
-        initials=initials,
-        role="student",
-        status="Active"
-    )
-    apply_password(new_user, user.password)
-    db.add(new_user)
-    assign_user_role(db, new_user, "student")
-    db.commit()
-    db.refresh(new_user)
-    
-    token = create_access_token(data={"sub": new_user.email})
-    return {"access_token": token, "token_type": "bearer", "user": new_user}
 
 class ProfileUpdate(BaseModel):
     model_config = ConfigDict(populate_by_name=True)

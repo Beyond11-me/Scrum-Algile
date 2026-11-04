@@ -49,17 +49,6 @@ export const authService = {
     return persist(data.user, data.access_token);
   },
   
-  async register(name: string, email: string, password: string) {
-    if (!name.trim() || !validEmail(email) || password.length < 8) {
-      throw new Error("Check the registration fields.");
-    }
-    const data = await apiFetch("/api/auth/register", {
-      method: "POST",
-      body: JSON.stringify({ name, email, password }),
-    });
-    return persist(data.user, data.access_token);
-  },
-
   async getProfile(): Promise<StudentSession & { nextProfileChangeAt: string | null }> {
     return apiFetch("/api/auth/profile");
   },

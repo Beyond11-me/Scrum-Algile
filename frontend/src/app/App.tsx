@@ -11,16 +11,12 @@ import {
   PublicOnlyRoute,
   TeacherRoute,
 } from "../components/ProtectedRoute";
-import {
-  LoginPage,
-  RegisterPage,
-} from "../pages/auth/AuthPages";
+import { LoginPage } from "../pages/auth/AuthPages";
 import { AccountPage } from "../pages/account/AccountPage";
 import { AssignmentsPage } from "../pages/student/AssignmentsPage";
 import { AssignmentWorkPage } from "../pages/student/AssignmentWorkPage";
 import { AssignmentDetailPage } from "../pages/student/AssignmentDetailPage";
 import { SubmissionsPage } from "../pages/student/SubmissionsPage";
-import { ProblemListPage } from "../pages/student/ProblemListPage";
 import { Loading } from "../components/ui";
 import { ProblemEditorPage } from "../pages/teacher/ProblemEditorPage";
 import { ProblemLibraryPage, AssignmentsListPage } from "../pages/teacher/TeacherLandingPages";
@@ -109,7 +105,6 @@ export function App() {
         />
         <Route element={<PublicOnlyRoute />}>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={["student"]} />}>
           <Route element={<Shell />}>
@@ -122,10 +117,10 @@ export function App() {
               path="/assignments/classes/:scopeId"
               element={<AssignmentDetailPage />}
             />
-            <Route path="/problems" element={<ProblemListPage />} />
+            <Route path="/problems" element={<Navigate replace to="/assignments" />} />
             <Route path="/submissions" element={<SubmissionsPage />} />
             <Route path="/account" element={<AccountPage />} />
-            <Route path="/practice" element={<Navigate replace to="/problems" />} />
+            <Route path="/practice" element={<Navigate replace to="/assignments" />} />
             <Route path="/dashboard" element={<Navigate replace to="/assignments" />} />
             <Route path="/contests" element={<Navigate replace to="/assignments" />} />
           </Route>

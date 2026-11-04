@@ -1,7 +1,7 @@
-import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useState, type FormEvent } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { authService, validEmail } from "../../services/authService";
+import { validEmail } from "../../services/authService";
 import { APP_NAME } from "../../data/models";
 type Errors = Record<string, string>;
 function PasswordField({
@@ -58,7 +58,6 @@ function PasswordField({
   );
 }
 function AuthLayout({
-  register = false,
   title,
   subtitle,
   showTeacherNote = true,
@@ -66,7 +65,6 @@ function AuthLayout({
   compact = false,
   children,
 }: {
-  register?: boolean;
   title?: string;
   subtitle?: string;
   showTeacherNote?: boolean;
@@ -107,12 +105,9 @@ function AuthLayout({
         <div className="auth-form-wrap">
           <div className="auth-heading">
             <span className="auth-form-eyebrow">{APP_NAME} ACCOUNT</span>
-            <h1>{title ?? (register ? "Create your account" : "Welcome back")}</h1>
+            <h1>{title ?? "Welcome back"}</h1>
             <p>
-              {subtitle ??
-                (register
-                  ? "Register with your student email to start practicing SQL."
-                  : "Sign in to continue practicing SQL.")}
+              {subtitle ?? "Sign in to continue practicing SQL."}
             </p>
           </div>
           {children}
@@ -219,110 +214,9 @@ export function LoginPage() {
           {busy ? "Signing in…" : "Sign in"}
         </button>
         <p className="auth-switch">
-          New student? <Link to="/register">Create an account</Link>
+          Need an account? Contact your administrator.
         </p>
       </form>
     </AuthLayout>
   );
 }
-
-export function RegisterPage() {
-  const auth = useAuth();
-  const navigate = useNavigate();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [errors, setErrors] = useState<Errors>({});
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    if (busy) return;
-    const next: Errors = {};
-    if (!name.trim()) next.name = "Enter your full name.";
-    if (!validEmail(email.trim())) next.email = "Enter a valid school email.";
-    if (password.length < 8) next.password = "Use at least 8 characters.";
-    if (!confirm || confirm !== password)
-      next.confirm = "Passwords must match.";
-    setErrors(next);
-    setMessage("");
-    if (Object.keys(next).length) return;
-    setBusy(true);
-    try {
-      await auth.register(name.trim(), email.trim(), password);
-      navigate("/dashboard", { replace: true, state: { welcome: true } });
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Registration failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <AuthLayout register centered showTeacherNote={false}>
-      <form onSubmit={(e) => void submit(e)} noValidate>
-        <label className="field" htmlFor="register-name">
-          Full name
-          <input
-            id="register-name"
-            type="text"
-            autoComplete="name"
-            placeholder="Nguyen Van A"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            aria-invalid={!!errors.name}
-          />
-          {errors.name && (
-            <small className="field-error">{errors.name}</small>
-          )}
-        </label>
-        <label className="field" htmlFor="register-email">
-          Email
-          <input
-            id="register-email"
-            type="email"
-            autoComplete="email"
-            placeholder="name@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            aria-invalid={!!errors.email}
-          />
-          {errors.email && (
-            <small className="field-error">{errors.email}</small>
-          )}
-        </label>
-        <PasswordField
-          id="register-password"
-          label="Password"
-          value={password}
-          onChange={setPassword}
-          error={errors.password}
-          autoComplete="new-password"
-          placeholder="Create a password"
-        />
-        <p className="password-requirements">At least 8 characters.</p>
-        <PasswordField
-          id="register-confirm"
-          label="Confirm password"
-          value={confirm}
-          onChange={setConfirm}
-          error={errors.confirm}
-          autoComplete="new-password"
-          placeholder="Re-enter your password"
-        />
-        {message && (
-          <p role="alert" className="form-message">
-            {message}
-          </p>
-        )}
-        <button className="button primary full" disabled={busy}>
-          {busy ? "Creating your account…" : "Create account"}
-        </button>
-        <p className="auth-switch" style={{ marginBottom: "0.5rem" }}>
-          Already have an account? <Link to="/login">Sign in</Link>
-        </p>
-      </form>
-    </AuthLayout>
-  );
-}
-

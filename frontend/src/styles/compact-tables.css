@@ -718,6 +718,15 @@ body:has(.compact-tables-page) { overflow: hidden; }
   .compact-teacher-classes .teacher-classes-layout { grid-template-columns: minmax(0, 1fr) 280px; }
   .compact-teacher-results .teacher-results-filters { grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)); gap: 8px; }
 }
+
+/* Keep the problem library actions on the filter row at laptop widths. */
+@media (min-width: 801px) {
+  .compact-teacher-library .teacher-problem-filters:has(.teacher-archive-toggle) {
+    grid-template-columns: minmax(130px, 1.2fr) repeat(3, minmax(85px, .75fr)) minmax(100px, auto) minmax(100px, auto);
+    gap: 8px;
+    align-items: end;
+  }
+}
 @media (min-width: 801px) {
   .compact-teacher-contests .teacher-contest-filters { flex: none; margin: 0; }
 }
@@ -751,6 +760,39 @@ body:has(.compact-tables-page) { overflow: hidden; }
 }
 
 .teacher-code-title { flex-wrap: wrap; gap: 8px; }
+
+.teacher-assignment-list-page .teacher-assignment-list-filters {
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 190px) auto;
+  align-items: end;
+}
+.teacher-assignment-list-page .teacher-assignment-list-filters .teacher-problem-new {
+  grid-column: 3;
+  justify-self: end;
+  white-space: nowrap;
+}
+@media (max-width: 800px) {
+  .teacher-assignment-list-page .teacher-assignment-list-filters {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .teacher-assignment-list-page .teacher-assignment-list-filters > .teacher-field:first-child {
+    grid-column: 1 / -1;
+  }
+  .teacher-assignment-list-page .teacher-assignment-list-filters .teacher-problem-new {
+    grid-column: 2;
+  }
+}
+@media (max-width: 480px) {
+  .teacher-assignment-list-page .teacher-assignment-list-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .teacher-assignment-list-page .teacher-assignment-list-filters > .teacher-field:first-child,
+  .teacher-assignment-list-page .teacher-assignment-list-filters .teacher-problem-new {
+    grid-column: 1;
+  }
+  .teacher-assignment-list-page .teacher-assignment-list-filters .teacher-problem-new {
+    justify-self: stretch;
+  }
+}
 .teacher-open-sql-editor { margin-left: auto; white-space: nowrap; }
 .teacher-test-case .teacher-code-title > div:first-child { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .dialog.teacher-sql-editor-dialog { width: min(1000px, calc(100vw - 32px)); max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); }
