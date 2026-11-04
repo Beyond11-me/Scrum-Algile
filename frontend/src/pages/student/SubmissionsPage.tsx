@@ -1,20 +1,14 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { studentApi } from "../../services/studentApi";
 import { type Submission } from "../../data/models";
 import { SubmissionDetails } from "../../components/SubmissionDetails";
 import { useLoad } from "../../components/useLoad";
 import { Empty, ErrorState, Loading, Status } from "../../components/ui";
+import { selectOnKey } from "../../utils/selectOnKey";
 import { submissionTimeLabel } from "../../utils/serverDateTime";
 
 const SUBMISSION_PAGE_SIZE = 15;
-
-/** The title link leaves the page, so the row itself is how the keyboard reaches a submission's details. */
-function selectOnKey(event: KeyboardEvent<HTMLElement>, select: () => void) {
-  if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
-  event.preventDefault();
-  select();
-}
 
 export function SubmissionsPage() {
   const [selected, setSelected] = useState<Submission | null>(null);
