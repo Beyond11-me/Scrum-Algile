@@ -11,6 +11,12 @@ export interface AdminUser {
   detail: string;
 }
 
+export type LecturerOption = {
+  id: string;
+  name: string;
+  email: string;
+};
+
 export const adminService = {
   async getUsers(): Promise<AdminUser[]> {
     return apiFetch("/api/admin/users");
@@ -46,6 +52,10 @@ export const adminService = {
       method: "PUT",
       body: JSON.stringify(data),
     });
+  },
+
+  async getLecturers(): Promise<LecturerOption[]> {
+    return apiFetch("/api/admin/classes/lecturers");
   },
 
   async getLecturerRequests(): Promise<any[]> {

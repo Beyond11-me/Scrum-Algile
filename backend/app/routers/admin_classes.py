@@ -6,6 +6,12 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.db.session import get_db
 from app.models import User, Class, ClassEnrollment, ActivityLog
 from app.services.authorization import require_permission
+from app.services.class_schedule import (
+    blank_to_none,
+    class_date_error,
+    class_term_error,
+    format_class_dates,
+)
 
 router = APIRouter()
 
@@ -50,7 +56,7 @@ class ClassResponse(BaseModel):
     instructor_name: Optional[str] = None
     students: int = 0
     status: str = "Active"
-    dates: str = "Sep 07 – Nov 28, 2026"
+    dates: str = "Unassigned"
     start_date: Optional[str] = Field(default=None, serialization_alias="startDate")
     end_date: Optional[str] = Field(default=None, serialization_alias="endDate")
 
@@ -63,7 +69,7 @@ def format_class_response(c: Class, db: Session) -> ClassResponse:
     instructor = db.query(User).filter(User.id == c.instructor_id).first() if c.instructor_id else None
     lecturer_name = instructor.name if instructor else "Unassigned"
     student_count = db.query(ClassEnrollment).filter(ClassEnrollment.class_id == c.id).count()
-    term_val = c.term or "HK1 2026"
+    term_val = c.term or ""
     return ClassResponse(
         id=c.id,
         course=c.course,
@@ -75,9 +81,9 @@ def format_class_response(c: Class, db: Session) -> ClassResponse:
         instructor_name=lecturer_name,
         students=student_count,
         status=c.status or "Active",
-        dates=f"{c.start_date} – {c.end_date}" if c.start_date and c.end_date else "Sep 07 – Nov 28, 2026",
-        start_date=c.start_date,
-        end_date=c.end_date
+        dates=format_class_dates(c.start_date, c.end_date),
+        start_date=blank_to_none(c.start_date),
+        end_date=blank_to_none(c.end_date),
     )
 
 @router.get("", response_model=List[ClassResponse])
@@ -87,7 +93,13 @@ def get_admin_classes(db: Session = Depends(get_db), _: User = Depends(require_a
 
 @router.get("/lecturers", response_model=List[LecturerOption])
 def get_lecturers_for_class(db: Session = Depends(get_db), _: User = Depends(require_admin)):
-    lecturers = db.query(User).filter(User.role == "instructor").all()
+    # Pending lecturer registrations are not assignable until an admin approves them.
+    lecturers = (
+        db.query(User)
+        .filter(User.role == "instructor", User.status == "Active")
+        .order_by(User.name)
+        .all()
+    )
     return [LecturerOption(id=u.id, name=u.name, email=u.email) for u in lecturers]
 
 @router.post("", response_model=ClassResponse)
@@ -100,12 +112,17 @@ def create_class(req: ClassCreatePayload, db: Session = Depends(get_db), current
     if existing:
         raise HTTPException(status_code=400, detail=f"Mã lớp '{class_id}' đã tồn tại.")
 
-    # Determine term / semester
     term = (req.semester or req.term or "").strip()
-    if not term:
-        term = "HK1 2026"
+    term_error = class_term_error(term)
+    if term_error:
+        raise HTTPException(status_code=400, detail=term_error)
 
-    # Determine instructor ID
+    start_date = blank_to_none(req.start_date)
+    end_date = blank_to_none(req.end_date)
+    date_error = class_date_error(start_date, end_date)
+    if date_error:
+        raise HTTPException(status_code=400, detail=date_error)
+
     target_instructor = req.lecturer_id or req.instructor_id
     assigned_instructor_id = None
     if target_instructor and target_instructor.strip() and target_instructor != "Unassigned":
@@ -118,8 +135,8 @@ def create_class(req: ClassCreatePayload, db: Session = Depends(get_db), current
         course=req.course.strip(),
         term=term,
         instructor_id=assigned_instructor_id,
-        start_date=req.start_date,
-        end_date=req.end_date,
+        start_date=start_date,
+        end_date=end_date,
         status="Active",
         created_at=datetime.utcnow()
     )
@@ -149,16 +166,28 @@ def update_class(
 
     if req.course is not None:
         c.course = req.course.strip()
-    if req.semester is not None:
-        c.term = req.semester.strip()
-    elif req.term is not None:
-        c.term = req.term.strip()
+    if req.semester is not None or req.term is not None:
+        term = (req.semester or req.term or "").strip()
+        term_error = class_term_error(term, current=c.term)
+        if term_error:
+            raise HTTPException(status_code=400, detail=term_error)
+        c.term = term
     if req.status is not None:
         c.status = req.status
+
+    next_start = c.start_date
+    next_end = c.end_date
     if req.start_date is not None:
-        c.start_date = req.start_date
+        next_start = blank_to_none(req.start_date)
     if req.end_date is not None:
-        c.end_date = req.end_date
+        next_end = blank_to_none(req.end_date)
+    date_error = class_date_error(next_start, next_end)
+    if date_error:
+        raise HTTPException(status_code=400, detail=date_error)
+    if req.start_date is not None:
+        c.start_date = next_start
+    if req.end_date is not None:
+        c.end_date = next_end
 
     target_instructor = req.lecturer_id if req.lecturer_id is not None else req.instructor_id
     if target_instructor is not None:

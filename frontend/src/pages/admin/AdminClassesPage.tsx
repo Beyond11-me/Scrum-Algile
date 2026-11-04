@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Search } from "lucide-react";
 import { Dialog, Empty, ErrorState, Loading } from "../../components/ui";
 import { AdminOnlyButton } from "../../components/withRoleAccess";
 import {
@@ -10,11 +11,12 @@ import {
   type AdminPracticeProblem,
   type AdminRoleName,
 } from "../../data/adminPolicy";
-import { adminService, type AdminUser } from "../../services/adminService";
+import { PersonIdentity, SearchablePersonMenu, type PersonOption } from "../../components/SearchablePersonMenu";
+import { adminService, type AdminUser, type LecturerOption } from "../../services/adminService";
 import { teacherService } from "../../services/teacherService";
 import type { TeacherClassMember } from "../../data/teacherTypes";
 import { studentApi } from "../../services/studentApi";
-import { academicTerms } from "../../utils/academicTerms";
+import { academicTerms, classDateError, CLASS_DATE_MAX, CLASS_DATE_MIN, formatClassDateRange } from "../../utils/academicTerms";
 import { localTime, parseServerDateTime } from "../../utils/serverDateTime";
 
 function PageIntro({ title, sub, children, compact = false }: { title: string; sub?: string; children?: ReactNode; compact?: boolean }) {
@@ -31,6 +33,24 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function Notice({ children }: { children: ReactNode }) {
   return <p className="admin-notice" role="status">{children}</p>;
+}
+
+function LecturerSlot({ lecturer, onChange, changeLabel = "Change", disabled = false }: { lecturer: PersonOption | null; onChange: () => void; changeLabel?: string; disabled?: boolean }) {
+  return <section className="lecturer-slot">
+    <span className="lecturer-slot-label">Lecturer</span>
+    {lecturer ? <div className="lecturer-slot-card">
+      <PersonIdentity name={lecturer.name} id={lecturer.id} email={lecturer.email} />
+      <button type="button" className="lecturer-slot-change" disabled={disabled} onClick={onChange}>{changeLabel}</button>
+    </div> : <button type="button" className="lecturer-slot-empty" disabled={disabled} onClick={onChange}>
+      <span>No lecturer assigned</span>
+      <b>{changeLabel === "Change" ? "Assign lecturer" : changeLabel}</b>
+    </button>}
+  </section>;
+}
+
+function findLecturer(lecturers: LecturerOption[], id?: string, fallbackName?: string): PersonOption | null {
+  if (!id || id === "Unassigned") return null;
+  return lecturers.find((item) => item.id === id) || (fallbackName && fallbackName !== "Unassigned" ? { id, name: fallbackName } : null);
 }
 
 function AddUserDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (user: AdminUser) => void }) {
@@ -475,15 +495,25 @@ export function AdminCoursesPage() {
   const [creating, setCreating] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [lecturers, setLecturers] = useState<LecturerOption[]>([]);
+  const [lecturerQuery, setLecturerQuery] = useState("");
+  const [pickingLecturer, setPickingLecturer] = useState(false);
+  const [assigningLecturer, setAssigningLecturer] = useState(false);
 
   useEffect(() => {
-    adminService.getClasses().then((classesData) => {
+    Promise.all([adminService.getClasses(), adminService.getLecturers()]).then(([classesData, lecturerData]) => {
       setClasses(classesData);
+      setLecturers(lecturerData);
       if (classesData.length > 0 && !selectedId) {
         setSelectedId(classesData[0].id);
       }
     }).catch((error) => setLoadError(error instanceof Error ? error.message : "Could not load classes.")).finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    setPickingLecturer(false);
+    setLecturerQuery("");
+  }, [selectedId]);
 
 
   useEffect(() => {
@@ -505,7 +535,23 @@ export function AdminCoursesPage() {
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const pageClasses = visible.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  const selected = pageClasses.find(item => item.id === selectedId) || pageClasses[0];
+  const selected = classes.find((item) => item.id === selectedId) || pageClasses[0];
+
+  async function assignLecturer(lecturerId: string, label: string) {
+    if (!selected || assigningLecturer) return;
+    setAssigningLecturer(true);
+    try {
+      const updated = await adminService.updateClass(selected.id, { lecturerId });
+      setClasses((all) => all.map((item) => item.id === selected.id ? updated : item));
+      setPickingLecturer(false);
+      setLecturerQuery("");
+      setNotice(lecturerId === "Unassigned" ? `${selected.id} is unassigned.` : `${label} assigned to ${selected.id}.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not assign lecturer.");
+    } finally {
+      setAssigningLecturer(false);
+    }
+  }
 
   useEffect(() => { setPage(current => Math.min(current, pageCount)); }, [pageCount]);
 
@@ -522,23 +568,119 @@ export function AdminCoursesPage() {
       </div>
     </div>
     {loadError && <Notice>{loadError}</Notice>}{notice && <Notice>{notice}</Notice>}
-    <Split main={<><div className="admin-table-wrap compact-table-scroll" role="region" aria-label="Courses and classes table" tabIndex={0}><table className="admin-table admin-course-table"><thead><tr><th>COURSE / CLASS</th><th>LECTURER</th><th>STUDENTS</th><th>STATUS</th></tr></thead><tbody>{pageClasses.map((item) => <tr key={item.id} className={item.id === selected?.id ? "is-selected" : ""} onClick={() => { setSelectedId(item.id); setShowCourseDetails(true); }}><td data-label="COURSE / CLASS"><Link className="admin-row-link" to={`/admin/courses/classes/${encodeURIComponent(item.id)}/edit`}>{item.course}</Link><small>{item.id}</small></td><td data-label="LECTURER" className={item.lecturer === "Unassigned" ? "admin-warning" : ""}>{item.lecturer}</td><td data-label="STUDENTS">{item.students}</td><td data-label="STATUS" className={item.status === "Active" ? "admin-success" : "admin-warning"}>{item.status}</td></tr>)}</tbody></table>{!loadError && classes.length === 0 && <p className="admin-table-footer">No classes yet. Add a class to get started.</p>}{!loadError && classes.length > 0 && visible.length === 0 && <p className="admin-table-footer">No classes match these filters.</p>}</div><AdminListPagination total={visible.length} page={currentPage} onPageChange={setPage} label="Course and class pages" noun="classes" alwaysVisible /></>} side={selected ? <>
-      <div className="admin-compact-panel-header"><h2>{selected.id}</h2><button type="button" className="text-button compact-panel-back" onClick={() => setShowCourseDetails(false)}>Back to classes</button></div><h3 className="admin-detail-title"><Link className="title-link" to={`/admin/courses/classes/${encodeURIComponent(selected.id)}/edit`}>{selected.course.split(" · ")[1] || selected.course}</Link></h3><p className={selected.status === "Active" ? "admin-success" : "admin-warning"}>{selected.status}{selected.lecturer === "Unassigned" ? " · Lecturer needed" : ""}</p><div className="admin-detail-divider" />
-      <Field label="SEMESTER"><select value={selected.semester} onChange={async (event) => {
-        const newSemester = event.target.value;
-        try {
-          const res = await adminService.updateClass(selected.id, { semester: newSemester });
-          setClasses(all => all.map(c => c.id === selected.id ? res : c));
-          setNotice(`${selected.id} semester updated.`);
-        } catch (error) { setNotice(error instanceof Error ? error.message : "Could not update semester."); }
-      }}>
-        {academicTerms(selected.semester).map(t => (
-          <option key={t} value={t}>{t}</option>
-        ))}
-      </select></Field>
-      <Field label="CLASS DATES"><input readOnly value={selected.startDate && selected.endDate ? `${selected.startDate} – ${selected.endDate}` : selected.dates} /></Field><p className="admin-muted">{selected.students} enrolled student{selected.students === 1 ? "" : "s"}</p>
-      <div className="admin-button-stack"><Link className="button admin-button" to={`/admin/courses/classes/${encodeURIComponent(selected.id)}/edit`}>Edit class</Link></div>
-    </> : <h2>Class details</h2>} />
+    <Split
+      main={pickingLecturer && selected ? (
+        <div className="admin-lecturer-picker-pane">
+          <div className="lecturer-picker-heading">
+            <div>
+              <h2>Assign a lecturer</h2>
+              <p>{selected.id} · {selected.course}</p>
+            </div>
+            <button type="button" className="button admin-button" onClick={() => { setPickingLecturer(false); setLecturerQuery(""); }}>
+              Cancel
+            </button>
+          </div>
+          <SearchablePersonMenu
+            label="Search lecturers"
+            items={lecturers}
+            query={lecturerQuery}
+            onQueryChange={setLecturerQuery}
+            onSelect={(person: PersonOption) => void assignLecturer(person.id, person.name)}
+            searchPlaceholder="Search lecturer name or email..."
+            emptyText={lecturers.length ? "No lecturers match this search." : "No active lecturers are available."}
+            currentId={selected.lecturerId}
+            actionLabel="Assign"
+            busy={assigningLecturer}
+            autoFocus
+            footer={selected.lecturer !== "Unassigned" ? (
+              <button
+                type="button"
+                className="lecturer-remove-link"
+                disabled={assigningLecturer}
+                onClick={() => void assignLecturer("Unassigned", "Unassigned")}
+              >
+                Remove current lecturer
+              </button>
+            ) : null}
+          />
+        </div>
+      ) : (
+        <>
+          <div className="admin-table-wrap compact-table-scroll" role="region" aria-label="Courses and classes table" tabIndex={0}>
+            <table className="admin-table admin-course-table">
+              <thead>
+                <tr>
+                  <th>COURSE / CLASS</th>
+                  <th>LECTURER</th>
+                  <th>STUDENTS</th>
+                  <th>STATUS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageClasses.map((item) => (
+                  <tr
+                    key={item.id}
+                    className={item.id === selected?.id ? "is-selected" : ""}
+                    onClick={() => { setSelectedId(item.id); setShowCourseDetails(true); }}
+                  >
+                    <td data-label="COURSE / CLASS">
+                      <button className="admin-row-link" onClick={() => { setSelectedId(item.id); setShowCourseDetails(true); }}>{item.course}</button>
+                      <small>{item.id}</small>
+                    </td>
+                    <td data-label="LECTURER" className={item.lecturer === "Unassigned" ? "admin-warning" : ""}>{item.lecturer}</td>
+                    <td data-label="STUDENTS">{item.students}</td>
+                    <td data-label="STATUS" className={item.status === "Active" ? "admin-success" : "admin-warning"}>{item.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!loadError && classes.length === 0 && <p className="admin-table-footer">No classes yet. Add a class to get started.</p>}
+            {!loadError && classes.length > 0 && visible.length === 0 && <p className="admin-table-footer">No classes match these filters.</p>}
+          </div>
+          <AdminListPagination total={visible.length} page={currentPage} onPageChange={setPage} label="Course and class pages" noun="classes" alwaysVisible />
+        </>
+      )}
+      side={selected ? <>
+        <div className="admin-compact-panel-header">
+          <h2>{selected.id}</h2>
+          <button type="button" className="text-button compact-panel-back" onClick={() => { setShowCourseDetails(false); setPickingLecturer(false); }}>Back to classes</button>
+        </div>
+        <h3 className="admin-detail-title">{selected.course.split(" · ")[1] || selected.course}</h3>
+        <p className={selected.status === "Active" ? "admin-success" : "admin-warning"}>
+          {selected.status}{selected.lecturer === "Unassigned" ? " · Lecturer needed" : ""}
+        </p>
+        <div className="admin-detail-divider" />
+        <Field label="SEMESTER">
+          <select value={selected.semester} onChange={async (event) => {
+            const newSemester = event.target.value;
+            try {
+              const res = await adminService.updateClass(selected.id, { semester: newSemester });
+              setClasses((all) => all.map((item) => item.id === selected.id ? res : item));
+              setNotice(`${selected.id} semester updated.`);
+            } catch (error) {
+              setNotice(error instanceof Error ? error.message : "Could not update semester.");
+            }
+          }}>
+            {academicTerms(selected.semester).map((term) => (
+              <option key={term} value={term}>{term}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="CLASS DATES">
+          <input readOnly value={formatClassDateRange(selected.startDate, selected.endDate)} />
+        </Field>
+        <LecturerSlot
+          lecturer={findLecturer(lecturers, selected.lecturerId, selected.lecturer)}
+          disabled={assigningLecturer || pickingLecturer}
+          changeLabel={assigningLecturer ? "Saving…" : pickingLecturer ? "Choosing…" : "Change"}
+          onChange={() => { setPickingLecturer(true); setShowCourseDetails(true); }}
+        />
+        <p className="admin-muted">{selected.students} enrolled student{selected.students === 1 ? "" : "s"}</p>
+        <div className="admin-button-stack">
+          <Link className="button admin-button" to={`/admin/courses/classes/${encodeURIComponent(selected.id)}/edit`}>Edit class</Link>
+        </div>
+      </> : <h2>Class details</h2>}
+    />
     {dialog && <CourseDialog error={createError} busy={creating} onClose={() => setDialog(false)} onCreate={async (id, course, term) => {
       if (classes.some((item) => item.id.toLowerCase() === id.toLowerCase())) { setCreateError(`A class with ID ${id} already exists.`); return; }
       setCreating(true);
@@ -567,23 +709,21 @@ export function AdminEditClassPage() {
   const [lecturer, setLecturer] = useState("Unassigned");
   const [status, setStatus] = useState<AdminClass["status"]>("Draft");
   const [notice, setNotice] = useState("");
-  const [lecturers, setLecturers] = useState<{ name: string, id: string }[]>([]);
+  const [lecturers, setLecturers] = useState<LecturerOption[]>([]);
+  const [lecturerQuery, setLecturerQuery] = useState("");
+  const [choosingLecturer, setChoosingLecturer] = useState(false);
   const [saving, setSaving] = useState(false);
   const [members, setMembers] = useState<TeacherClassMember[]>([]);
-  const [students, setStudents] = useState<TeacherClassMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(true);
   const [membersError, setMembersError] = useState("");
-  const [membersNotice, setMembersNotice] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
-  const [memberTab, setMemberTab] = useState<"remove" | "add">("remove");
-  const [memberBusyId, setMemberBusyId] = useState("");
 
   useEffect(() => {
     Promise.all([
       adminService.getClasses(),
-      adminService.getUsers()
-    ]).then(([classes, users]) => {
-      const cls = classes.find(c => c.id === classId);
+      adminService.getLecturers()
+    ]).then(([classList, lecturerList]) => {
+      const cls = classList.find((item) => item.id === classId);
       if (cls) {
         setRecord(cls);
         setCourse(cls.course);
@@ -593,7 +733,7 @@ export function AdminEditClassPage() {
         setLecturer(cls.lecturerId || "Unassigned");
         setStatus(cls.status as AdminClass["status"]);
       }
-      setLecturers(users.filter((user: any) => user.role.toLowerCase() === "lecturer" || user.role === "instructor").map((user: any) => ({ name: user.name, id: user.id })));
+      setLecturers(lecturerList);
       setLoading(false);
     }).catch((error) => { setLoadError(error instanceof Error ? error.message : "Could not load class details."); setLoading(false); });
   }, [classId]);
@@ -602,11 +742,10 @@ export function AdminEditClassPage() {
     let active = true;
     setMembersLoading(true);
     setMembersError("");
-    Promise.all([teacherService.getClassMembers(classId), teacherService.getAllStudents()])
-      .then(([classMembers, allStudents]) => {
+    teacherService.getClassMembers(classId)
+      .then((classMembers) => {
         if (!active) return;
         setMembers(classMembers);
-        setStudents(allStudents);
       })
       .catch((error) => {
         if (active) setMembersError(error instanceof Error ? error.message : "Could not load class members.");
@@ -621,45 +760,16 @@ export function AdminEditClassPage() {
 
   const currentRecord = record;
 
-  const enrolledIds = new Set(members.map((member) => member.id).filter(Boolean));
   const normalizedMemberSearch = memberSearch.trim().toLowerCase();
   const filteredMembers = members.filter((member) =>
     `${member.name} ${member.id || ""} ${member.email || ""}`.toLowerCase().includes(normalizedMemberSearch),
   );
-  const availableStudents = students.filter((student) =>
-    student.id && !enrolledIds.has(student.id) &&
-    `${student.name} ${student.id} ${student.email || ""}`.toLowerCase().includes(normalizedMemberSearch),
-  );
-  const availableStudentCount = students.filter((student) => student.id && !enrolledIds.has(student.id)).length;
-
-  async function changeMembership(student: TeacherClassMember, action: "add" | "remove") {
-    if (!student.id || memberBusyId) return;
-    setMemberBusyId(student.id);
-    setMembersError("");
-    setMembersNotice("");
-    try {
-      if (action === "add") {
-        const added = await teacherService.addClassMember(classId, { student_id: student.id });
-        setMembers((current) => [...current, added].sort((a, b) => a.name.localeCompare(b.name)));
-        setMembersNotice(`${student.name} added to this class.`);
-      } else {
-        await teacherService.removeClassMember(classId, student.id);
-        setMembers((current) => current.filter((member) => member.id !== student.id));
-        setMembersNotice(`${student.name} removed from this class.`);
-      }
-      setRecord((current) => current ? { ...current, students: Math.max(0, current.students + (action === "add" ? 1 : -1)) } : current);
-    } catch (error) {
-      setMembersError(error instanceof Error ? error.message : `Could not ${action} this student.`);
-    } finally {
-      setMemberBusyId("");
-    }
-  }
 
   async function save(event: FormEvent) {
     event.preventDefault();
     if (saving) return;
-    if (!startDate.trim() || !endDate.trim()) { setNotice("Class dates are required."); return; }
-    if (endDate < startDate) { setNotice("End date must be after the start date."); return; }
+    const dateError = classDateError(startDate, endDate);
+    if (dateError) { setNotice(dateError); return; }
     setSaving(true);
     setNotice("");
     try {
@@ -683,42 +793,65 @@ export function AdminEditClassPage() {
             <option key={t} value={t}>{t}</option>
           ))}
         </select></Field>
-        <Field label="LECTURER"><select value={lecturer} onChange={(event) => setLecturer(event.target.value)}><option value="Unassigned">Unassigned</option>{lecturers.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select></Field>
+        <LecturerSlot
+          lecturer={findLecturer(lecturers, lecturer, lecturer === currentRecord.lecturerId ? currentRecord.lecturer : undefined)}
+          changeLabel={choosingLecturer ? "Close" : "Change"}
+          onChange={() => { setChoosingLecturer((open) => !open); setLecturerQuery(""); }}
+        />
+        {choosingLecturer && <div className="lecturer-inline-picker">
+          <SearchablePersonMenu
+            label="Search lecturers"
+            items={lecturers}
+            query={lecturerQuery}
+            onQueryChange={setLecturerQuery}
+            onSelect={(person) => { setLecturer(person.id); setLecturerQuery(""); setChoosingLecturer(false); }}
+            searchPlaceholder="Search lecturer name or email..."
+            emptyText={lecturers.length ? "No lecturers match this search." : "No active lecturers are available."}
+            currentId={lecturer}
+            actionLabel="Choose"
+            autoFocus
+            footer={lecturer !== "Unassigned" ? (
+              <button type="button" className="lecturer-remove-link" onClick={() => { setLecturer("Unassigned"); setChoosingLecturer(false); }}>Remove lecturer</button>
+            ) : null}
+          />
+        </div>}
         <Field label="CLASS STATUS"><select value={status} onChange={(event) => setStatus(event.target.value as AdminClass["status"])}><option>Draft</option><option>Active</option><option>Archived</option></select></Field>
         {notice && <Notice>{notice}</Notice>}
         <div className="admin-class-form-bottom">
-          <div className="admin-class-date-row">
-            <Field label="START DATE"><input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} required /></Field>
-            <Field label="END DATE"><input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} required /></Field>
+          <div>
+            <div className="admin-class-date-row">
+              <Field label="START DATE"><input type="date" min={CLASS_DATE_MIN} max={CLASS_DATE_MAX} value={startDate} onChange={(event) => setStartDate(event.target.value)} /></Field>
+              <Field label="END DATE"><input type="date" min={CLASS_DATE_MIN} max={CLASS_DATE_MAX} value={endDate} onChange={(event) => setEndDate(event.target.value)} /></Field>
+            </div>
           </div>
           <div className="admin-edit-actions admin-class-inline-actions"><Link className="button admin-button" to="/admin/courses">Cancel</Link><button className="button primary admin-button" disabled={saving}>{saving ? "Saving…" : "Save class"}</button></div>
         </div>
       </form>
       <aside className="admin-edit-form admin-edit-members" aria-labelledby="admin-class-members-title">
         <div className="admin-members-heading">
-          <div><h2 id="admin-class-members-title">Manage members</h2><p className="admin-muted">Add students to or remove them from this class.</p></div>
+          <div>
+            <h2 id="admin-class-members-title">Class members</h2>
+            <p className="admin-muted">Read-only. The assigned lecturer manages enrollment.</p>
+          </div>
+          <span className="class-roster-count">{members.length}</span>
         </div>
         {membersError && <Notice>{membersError}</Notice>}
-        {membersNotice && <p className="admin-member-notice" role="status">{membersNotice}</p>}
         {membersLoading ? <Loading label="Loading class members…" /> : <>
-          <Field label="SEARCH STUDENTS"><input value={memberSearch} onChange={(event) => setMemberSearch(event.target.value)} placeholder="Search by name, ID, or email..." /></Field>
-          <div className="admin-member-tabs" role="tablist" aria-label="Manage class members">
-            <button id="remove-students-tab" type="button" role="tab" aria-selected={memberTab === "remove"} aria-controls="remove-students-panel" className={memberTab === "remove" ? "is-active" : ""} onClick={() => setMemberTab("remove")}>Remove students <span>{members.length}</span></button>
-            <button id="add-students-tab" type="button" role="tab" aria-selected={memberTab === "add"} aria-controls="add-students-panel" className={memberTab === "add" ? "is-active" : ""} onClick={() => setMemberTab("add")}>Add students <span>{availableStudentCount}</span></button>
-          </div>
-          {memberTab === "remove" ? <section id="remove-students-panel" className="admin-member-list" role="tabpanel" aria-labelledby="remove-students-tab">
-            {filteredMembers.map((member) => <div className="admin-member-row" key={member.id || member.email}>
-              <div><strong>{member.name}</strong><small>{member.id}{member.email ? ` · ${member.email}` : ""}</small></div>
-              <button className="admin-member-remove" type="button" disabled={Boolean(memberBusyId)} onClick={() => void changeMembership(member, "remove")}>{memberBusyId === member.id ? "…" : "Remove"}</button>
-            </div>)}
-            {!filteredMembers.length && <p className="admin-member-empty">{members.length ? "No enrolled students match this search." : "No students are enrolled yet."}</p>}
-          </section> : <section id="add-students-panel" className="admin-member-list" role="tabpanel" aria-labelledby="add-students-tab">
-            {availableStudents.map((student) => <div className="admin-member-row" key={student.id}>
-              <div><strong>{student.name}</strong><small>{student.id}{student.email ? ` · ${student.email}` : ""}</small></div>
-              <button className="admin-member-add" type="button" disabled={Boolean(memberBusyId)} onClick={() => void changeMembership(student, "add")}>{memberBusyId === student.id ? "…" : "Add"}</button>
-            </div>)}
-            {!availableStudents.length && <p className="admin-member-empty">{students.every((student) => !student.id || enrolledIds.has(student.id)) ? "All students are already in this class." : "No available students match this search."}</p>}
-          </section>}
+          {members.length > 5 && <label className="person-search">
+            <span className="sr-only">Filter students</span>
+            <Search size={15} aria-hidden="true" />
+            <input type="search" value={memberSearch} onChange={(event) => setMemberSearch(event.target.value)} placeholder="Filter by name or email..." />
+          </label>}
+          <section className="admin-member-list">
+            {filteredMembers.map((member) => (
+              <div className="admin-member-row" key={member.id || member.email}>
+                <PersonIdentity name={member.name} id={member.id} email={member.email} />
+              </div>
+            ))}
+            {!filteredMembers.length && (
+              <p className="admin-member-empty">{members.length ? "No enrolled students match this search." : "No students are enrolled yet."}</p>
+            )}
+          </section>
         </>}
       </aside>
     </div>
@@ -1058,7 +1191,7 @@ function OverviewActivityPanel({ activity, onClose }: { activity: any; onClose: 
           <div><dt>Lecturer</dt><dd>{relatedClass.lecturer}</dd></div>
           <div><dt>Students</dt><dd>{relatedClass.students}</dd></div>
           <div><dt>Status</dt><dd>{relatedClass.status}</dd></div>
-          <div><dt>Dates</dt><dd>{relatedClass.startDate && relatedClass.endDate ? relatedClass.startDate + " – " + relatedClass.endDate : "Not specified"}</dd></div>
+          <div><dt>Dates</dt><dd>{formatClassDateRange(relatedClass.startDate, relatedClass.endDate)}</dd></div>
         </dl> : <p className="admin-muted">Class {classId}: current information is unavailable.</p>}
         <p className="admin-muted admin-overview-context-note">Class information reflects its current state. This activity record does not contain the previous field values.</p>
       </>}
@@ -1104,7 +1237,7 @@ function OverviewUnassignedClassesPanel({ onClose }: { onClose: () => void }) {
         <div><dt>Status</dt><dd>{selected.status}</dd></div>
         <div><dt>Lecturer</dt><dd className="admin-warning">Unassigned</dd></div>
         <div><dt>Students</dt><dd>{selected.students}</dd></div>
-        <div><dt>Dates</dt><dd>{selected.startDate && selected.endDate ? selected.startDate + " – " + selected.endDate : selected.dates || "—"}</dd></div>
+        <div><dt>Dates</dt><dd>{formatClassDateRange(selected.startDate, selected.endDate)}</dd></div>
       </dl>
     </> : <p className="admin-muted">All classes have an assigned lecturer.</p>}
   </div>;
