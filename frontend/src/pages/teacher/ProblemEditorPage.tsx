@@ -498,7 +498,7 @@ export function ProblemEditorPage() {
       ? range.startContainer as HTMLElement
       : range.startContainer.parentElement;
     const currentSize = startElement ? parseFloat(window.getComputedStyle(startElement).fontSize) : 12;
-    const nextSize = Math.max(10, Math.min(20, currentSize + delta));
+    const nextSize = Math.max(11, Math.min(20, currentSize + delta));
     const wrapper = document.createElement("span");
     wrapper.style.fontSize = `${nextSize}px`;
     wrapper.appendChild(range.extractContents());

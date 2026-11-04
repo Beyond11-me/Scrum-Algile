@@ -65,7 +65,7 @@
   background: var(--danger);
   border: 2px solid var(--surface);
   color: white;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: bold;
   display: flex;
   align-items: center;
@@ -98,7 +98,7 @@
   color: var(--muted);
   border: 0;
   padding: 2px 0 2px 8px;
-  font-size: 9px;
+  font-size: 11px;
 }
 .popover-close:hover {
   color: var(--text);
@@ -115,7 +115,7 @@
   border-bottom: 2px solid transparent;
   padding: 5px 8px 4px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 11px;
 }
 .notification-tabs button[aria-selected="true"] {
   border-bottom-color: var(--accent);
@@ -184,14 +184,14 @@
   border-radius: 999px;
 }
 .notification-list h3 {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
-  line-height: 14px;
+  line-height: 15px;
   margin: 0;
 }
 .notification-list p {
-  font-size: 8px;
-  line-height: 12px;
+  font-size: 11px;
+  line-height: 15px;
   color: var(--muted);
   margin: 3px 0;
 }
@@ -200,20 +200,20 @@
   align-items: center;
   gap: 6px;
   color: var(--muted);
-  font-size: 8px;
-  line-height: 12px;
+  font-size: 11px;
+  line-height: 15px;
 }
 .notification-list a,
 .notification-list small {
-  font-size: 8px;
-  line-height: 12px;
+  font-size: 11px;
+  line-height: 15px;
 }
 .notification-list small {
   color: var(--muted);
 }
 .popover-footnote {
-  font-size: 8px;
-  line-height: 12px;
+  font-size: 11px;
+  line-height: 15px;
   color: var(--muted);
   margin: 6px 0 0;
   padding-top: 7px;
@@ -239,8 +239,8 @@
 }
 .streak-popover p {
   display: block;
-  font-size: 9px;
-  line-height: 14px;
+  font-size: 11px;
+  line-height: 15px;
   margin: 7px 0;
 }
 .streak-popover .streak-today {
@@ -249,7 +249,7 @@
 .streak-popover > small {
   display: block;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 11px;
 }
 .student-popover > .button {
   width: 100%;
@@ -378,7 +378,7 @@ body:has(.practice-page) {
 .practice-activity h3 small {
   color: var(--muted);
   font-weight: 400;
-  font-size: 10px;
+  font-size: 11px;
   margin-left: auto;
   text-align: right;
   white-space: nowrap;
@@ -389,7 +389,7 @@ body:has(.practice-page) {
   gap: 2px 6px;
 }
 .practice-calendar-weekday {
-  font-size: 8px;
+  font-size: 11px;
   text-align: center;
   color: var(--muted);
   padding-bottom: 2px;
@@ -398,14 +398,14 @@ body:has(.practice-page) {
   display: grid;
   place-items: center;
   min-height: 16px;
-  font-size: 8px;
+  font-size: 11px;
   border-radius: 4px;
 }
 .practice-calendar-legend {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 8px;
+  font-size: 11px;
   color: var(--muted);
   margin-top: 6px;
 }
@@ -456,7 +456,7 @@ body:has(.practice-page) {
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 5px 10px;
-  font-size: 9px;
+  font-size: 11px;
   color: var(--muted);
   white-space: nowrap;
 }
@@ -483,7 +483,7 @@ body:has(.practice-page) {
   display: block;
   margin-top: 14px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 .favorite-problem small {
   margin-top: 8px;
@@ -599,13 +599,13 @@ body:has(.practice-page) {
 }
 .assignment-calendar-content .calendar-heading { margin:4px 0; }
 .assignment-calendar-content .calendar > .tiny {
-  font-size: 10px;
+  font-size: 11px;
 }
 .assignment-deadline-panel .calendar > h3,
 .assignment-deadline-panel .calendar > .tiny { display:none; }
 .assignment-calendar-content .calendar-grid button {
   height: 28px;
-  font-size: 10px;
+  font-size: 11px;
 }
 .assignment-calendar-content .calendar-grid .today {
   background: transparent;
@@ -621,11 +621,11 @@ body:has(.practice-page) {
 .assignment-calendar-content .calendar-legend::first-letter {
   color: var(--accent);
 }
-.assignment-deadline-panel .calendar-selection { margin-top:12px; font-size:10px; }
-.assignment-deadline-panel .calendar-selection > b { font-size:10px; }
+.assignment-deadline-panel .calendar-selection { margin-top:12px; font-size:11px; }
+.assignment-deadline-panel .calendar-selection > b { font-size:11px; }
 .assignment-deadline-panel .calendar-selection .deadline-list a { padding:10px 0; }
 .assignment-deadline-panel .calendar-selection .deadline-list b { font-size:11px; }
-.assignment-deadline-panel .calendar-selection .deadline-list small { margin-top:4px; font-size:10px; }
+.assignment-deadline-panel .calendar-selection .deadline-list small { margin-top:4px; font-size:11px; }
 .assignment-deadline-scroll {
   max-height: 240px;
   overflow-y: auto;
@@ -640,7 +640,7 @@ body:has(.practice-page) {
 }
 .assignment-deadline-scroll small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 .assignment-deadline-scroll b {
   font-size: 11px;
@@ -689,7 +689,7 @@ body:has(.practice-page) {
     font-weight: 500;
   }
   .assignment-mobile-deadlines button {
-    font-size: 10px;
+    font-size: 11px;
   }
   .assignments-page .scope-toolbar {
     min-height: 0;
@@ -749,11 +749,11 @@ body:has(.practice-page) {
     font-size: 15px;
   }
   .assignments-page .class-card-identity > small {
-    font-size: 10px;
+    font-size: 11px;
   }
   .class-mobile-summary {
     display: block;
-    font-size: 10px;
+    font-size: 11px;
     color: var(--muted);
   }
   .class-card-footer {
@@ -764,7 +764,7 @@ body:has(.practice-page) {
     align-self: start;
   }
   .class-card-footer small {
-    font-size: 10px;
+    font-size: 11px;
   }
   .class-mobile-arrow {
     display: block;
@@ -864,19 +864,19 @@ body:has(.practice-page) {
   border-radius: 4px;
   background: var(--subtle);
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 .assignment-work-due,
 .assignment-work-progress {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 10px;
+  font-size: 11px;
 }
 .assignment-work-due small,
 .assignment-work-progress small {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 11px;
 }
 .assignment-work-due b {
   font-weight: 500;
@@ -915,7 +915,7 @@ body:has(.practice-page) {
 .member-row small {
   display: block;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 4px;
 }
 .contest-detail-banner {
@@ -945,7 +945,7 @@ body:has(.practice-page) {
 }
 .contest-detail-banner small {
   color: var(--feature-mark);
-  font-size: 10px;
+  font-size: 11px;
 }
 .contest-detail-banner .button {
   background: #fff;
@@ -1085,7 +1085,7 @@ body:has(.practice-page) {
   font-size: 12px;
 }
 .submitted-query > small {
-  font-size: 10px;
+  font-size: 11px;
 }
 .instructor-evaluation {
   padding: 16px;
@@ -1126,7 +1126,7 @@ body:has(.practice-page) {
   color: var(--accent);
 }
 .cursor-position {
-  font-size: 10px;
+  font-size: 11px;
   margin-right: auto;
   white-space: nowrap;
 }
@@ -1191,7 +1191,7 @@ body:has(.practice-page) {
     font-size: 13px;
   }
   .practice-activity h3 small {
-    font-size: 9px;
+    font-size: 11px;
   }
   .practice-calendar,
   .practice-calendar-legend {
@@ -1214,7 +1214,7 @@ body:has(.practice-page) {
   .trending-range button {
     border: 0;
     padding: 0;
-    font-size: 10px;
+    font-size: 11px;
   }
   .trending-range button[aria-pressed="true"] {
     background: transparent;
@@ -1236,7 +1236,7 @@ body:has(.practice-page) {
     padding: 0;
     margin: 0 0 12px;
     border: 0;
-    font-size: 10px;
+    font-size: 11px;
   }
   .trending-problem small {
     margin: 0;
@@ -1482,16 +1482,16 @@ body:has(.assignment-work-page), body:has(.scope-detail-page) { background: var(
 .deadline-scroll { flex:1; min-height:0; }
 .dashboard-deadline-row { display:grid; grid-template-columns:44px minmax(0,1fr) auto; gap:14px; align-items:center; min-height:71px; padding:13px 20px; border-bottom:1px solid var(--border); }
 .dashboard-deadline-row time { display:flex; flex-direction:column; align-items:center; justify-content:center; height:46px; border-radius:5px; background:var(--subtle); color:var(--muted); }
-.dashboard-deadline-row time b { font-size:10px; }
+.dashboard-deadline-row time b { font-size:11px; }
 .dashboard-deadline-row time strong { font-size:20px; line-height:22px; }
 .dashboard-deadline-row > span { min-width:0; display:flex; flex-direction:column; gap:2px; }
 .dashboard-deadline-row > span b { font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.dashboard-deadline-row small, .dashboard-deadline-row em { color:var(--muted); font-size:10px; font-style:normal; white-space:nowrap; }
+.dashboard-deadline-row small, .dashboard-deadline-row em { color:var(--muted); font-size:11px; font-style:normal; white-space:nowrap; }
 .dashboard-week { flex:none; padding:15px 20px 16px; }
 .dashboard-week > div:first-child { display:flex; justify-content:space-between; font-size:11px; }
 .dashboard-week a { color:var(--accent); }
 .dashboard-week-days { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-top:16px; }
-.dashboard-week-days span { display:flex; flex-direction:column; align-items:center; gap:5px; font-size:10px; position:relative; }
+.dashboard-week-days span { display:flex; flex-direction:column; align-items:center; gap:5px; font-size:11px; position:relative; }
 .dashboard-week-days small { color:var(--muted); }
 .dashboard-week-days b { display:grid; place-items:center; width:28px; height:28px; border-radius:50%; font-size:11px; font-weight:400; }
 .dashboard-week-days b.today { background:var(--accent); color:var(--on-accent); }
@@ -1521,17 +1521,17 @@ body:has(.assignment-work-page), body:has(.scope-detail-page) { background: var(
 .practice-layout { align-items:start; grid-template-columns:minmax(0,1fr) 400px; gap:32px; }
 .practice-main { min-width:0; }
 .practice-page .filters { display:grid; grid-template-columns:minmax(0,1.8fr) repeat(3,minmax(0,1fr)); gap:10px; margin-bottom:8px; padding:0 0 8px; }
-.practice-page .filters .field { min-width:0; font-size:10px; }
+.practice-page .filters .field { min-width:0; font-size:11px; }
 .practice-page .filters input, .practice-page .filters select { height:36px; padding:0 10px; font-size:11px; }
 .practice-page .problem-list { border:1px solid var(--border); border-radius:6px; background:var(--surface); scroll-margin-top:calc(var(--header-height) + 8px); }
-.practice-page .problem-list-heading { position:sticky; top:var(--header-height); z-index:5; min-height:29px; padding:0 14px; background:var(--subtle); box-shadow:0 1px 0 var(--border); font-size:9px; }
+.practice-page .problem-list-heading { position:sticky; top:var(--header-height); z-index:5; min-height:29px; padding:0 14px; background:var(--subtle); box-shadow:0 1px 0 var(--border); font-size:11px; }
 .practice-page .problem-row { min-height:62px; padding:14px; border-bottom:1px solid var(--border); }
 .practice-page .practice-sidebar { position:sticky; top:calc(var(--header-height) + 16px); align-self:start; box-sizing:border-box; height:min(690px, calc(100dvh - var(--header-height) - 32px)); min-height:0; overflow:hidden; gap:8px; }
 .practice-page .practice-activity { flex:none; padding:8px; }
 .practice-page .practice-trending { display:flex; min-height:0; flex:1; flex-direction:column; border-top:1px solid var(--border); padding:8px 8px 0; }
 .practice-page .trending-range { flex:none; margin:8px 0; }
 .practice-page .trending-scroll { min-height:0; max-height:none; flex:1; }
-@media (max-width:1100px) { .practice-page .practice-activity h3 { font-size:12px; } .practice-page .practice-activity h3 small { font-size:8px; } }
+@media (max-width:1100px) { .practice-page .practice-activity h3 { font-size:12px; } .practice-page .practice-activity h3 small { font-size:11px; } }
 @media (max-width:1100px) { .practice-layout { grid-template-columns:minmax(0,1fr) 320px; gap:20px; } }
 @media (max-width:760px) {
   .practice-layout { grid-template-columns:minmax(0,1fr); gap:0; }
@@ -1548,7 +1548,7 @@ body:has(.assignment-work-page), body:has(.scope-detail-page) { background: var(
 }
 
 /* Assignment, contest and submission screens. */
-.contest-tab-count { margin-left:3px; color:var(--muted); font-size:10px; }
+.contest-tab-count { margin-left:3px; color:var(--muted); font-size:11px; }
 .submissions-page { max-width:1314px; }
 .submissions-filters { grid-template-columns:minmax(220px,3.4fr) 1fr 1fr; }
 .submissions-table { min-width:760px; }
@@ -1573,11 +1573,11 @@ body:has(.assignment-work-page), body:has(.scope-detail-page) { background: var(
 .submission-detail-footer { flex:none; background:var(--surface); }
 
 @media (max-width:760px) {
-  .contest-tab-count { font-size:9px; }
+  .contest-tab-count { font-size:11px; }
   .submissions-page { padding-top:20px; }
   .submissions-filters { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
   .submissions-filters .search-field { grid-column:1/-1; }
-  .submissions-filters .field { min-width:0; font-size:10px; }
+  .submissions-filters .field { min-width:0; font-size:11px; }
   .submissions-filters input,
   .submissions-filters select { width:100%; min-width:0; height:38px; padding:0 10px; font-size:11px; }
   .submissions-desktop { display:none; }
@@ -1586,10 +1586,10 @@ body:has(.assignment-work-page), body:has(.scope-detail-page) { background: var(
   .submission-mobile-main { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
   .submission-mobile-problem { min-width:0; }
   .submission-mobile-problem b { display:block; font-size:13px; line-height:1.45; }
-  .submission-mobile-problem small { display:block; margin-top:4px; color:var(--muted); font-size:10px; }
-  .submission-mobile-main > .status { flex:none; max-width:42%; font-size:9px; }
+  .submission-mobile-problem small { display:block; margin-top:4px; color:var(--muted); font-size:11px; }
+  .submission-mobile-main > .status { flex:none; max-width:42%; font-size:11px; }
   .submission-mobile-meta { display:flex; align-items:center; justify-content:space-between; color:var(--muted); }
-  .submission-mobile-meta small { font-size:10px; }
+  .submission-mobile-meta small { font-size:11px; }
   .submission-mobile-row:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   .dialog.submission-drawer { width:100vw; height:100dvh; max-height:100dvh; }
   .submission-drawer > .section-heading { padding:16px; }

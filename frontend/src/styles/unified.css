@@ -33,7 +33,7 @@
 .teacher-list-detail-panel,.admin-side { position:sticky; top:calc(var(--header-height) + 20px); align-self:start; min-width:0; min-height:0; padding:20px; border:1px solid var(--border); border-radius:var(--radius-lg); background:var(--surface); }
 .teacher-list-detail-main > .teacher-list-footer,.admin-primary .admin-table-footer { padding-right:12px; padding-left:12px; }
 .teacher-table,.admin-table { width:100%; font-size:12px; }
-.teacher-table th,.admin-table th { height:38px; padding:10px 12px; background:var(--subtle); color:var(--muted); font-size:10px; letter-spacing:.03em; }
+.teacher-table th,.admin-table th { height:38px; padding:10px 12px; background:var(--subtle); color:var(--muted); font-size:11px; letter-spacing:.03em; }
 .teacher-table td,.admin-table td { padding:12px; border-bottom:1px solid var(--border-subtle); line-height:18px; }
 .teacher-library-table { min-width:0; }
 .teacher-library-table th:nth-child(1) { width:10%; }
@@ -85,11 +85,11 @@
 .teacher-hint-field { display:flex; flex-direction:column; gap:6px; }
 .teacher-hint-label { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--muted); font-size:11px; line-height:17px; }
 .teacher-hint-actions { display:flex; align-items:center; gap:6px; }
-.teacher-hint-actions .button { min-height:30px; padding:5px 9px; font-size:10px; }
+.teacher-hint-actions .button { min-height:30px; padding:5px 9px; font-size:11px; }
 .teacher-hint-delete { border-color:var(--danger); color:var(--danger); }
 .teacher-hint-field textarea { min-height:88px; }
 .teacher-hint-field.is-disabled textarea { opacity:.55; background:var(--subtle); cursor:not-allowed; }
-.teacher-hint-field.is-disabled .teacher-hint-label > span::after { content:" · disabled"; color:var(--muted); font-size:10px; }
+.teacher-hint-field.is-disabled .teacher-hint-label > span::after { content:" · disabled"; color:var(--muted); font-size:11px; }
 .teacher-validation-section { padding:16px 0; border-top:1px solid var(--border-subtle); }
 .teacher-validation-section:first-of-type { border-top:0; padding-top:0; }
 .teacher-validation-section > .teacher-section-title { margin-bottom:10px; }
@@ -128,23 +128,23 @@
 .workspace-schema-table-card { min-width:0; overflow:hidden; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface); }
 .workspace-schema-table-card > h4 { margin:0; padding:9px 12px; border-bottom:1px solid var(--border); background:var(--subtle); color:var(--text); font-size:12px; }
 .workspace-schema-table-scroll { overflow-x:auto; }
-.workspace-schema-table { width:100%; border-collapse:collapse; table-layout:fixed; color:var(--text); font-size:10px; line-height:1.45; text-align:left; }
+.workspace-schema-table { width:100%; border-collapse:collapse; table-layout:fixed; color:var(--text); font-size:11px; line-height:1.45; text-align:left; }
 .workspace-schema-table th,.workspace-schema-table td { padding:8px 9px; border-bottom:1px solid var(--border-subtle); vertical-align:top; overflow-wrap:anywhere; }
-.workspace-schema-table thead th { color:var(--muted); background:var(--surface); font-size:8px; font-weight:500; text-transform:uppercase; }
+.workspace-schema-table thead th { color:var(--muted); background:var(--surface); font-size:11px; font-weight:500; text-transform:uppercase; }
 .workspace-schema-table tbody th { font-weight:500; }
 .workspace-schema-table th:first-child { width:34%; }
 .workspace-schema-table th:nth-child(2) { width:33%; }
 .workspace-schema-table th:nth-child(3) { width:33%; }
 .workspace-seed-tables { display:grid; gap:8px; margin:4px 0 20px; }
-.workspace-seed-table { width:max-content; min-width:100%; border-collapse:collapse; color:var(--text); font-size:10px; line-height:1.45; text-align:left; }
+.workspace-seed-table { width:max-content; min-width:100%; border-collapse:collapse; color:var(--text); font-size:11px; line-height:1.45; text-align:left; }
 .workspace-seed-table th,.workspace-seed-table td { padding:8px 9px; border-bottom:1px solid var(--border-subtle); vertical-align:top; }
-.workspace-seed-table th { color:var(--muted); background:var(--surface); font-size:8px; font-weight:500; text-transform:uppercase; white-space:nowrap; }
+.workspace-seed-table th { color:var(--muted); background:var(--surface); font-size:11px; font-weight:500; text-transform:uppercase; white-space:nowrap; }
 .workspace-seed-table td { max-width:180px; overflow-wrap:anywhere; }
 .workspace-schema-relations { display:flex; flex-wrap:wrap; gap:6px; padding:7px 9px; border-top:1px solid var(--border-subtle); }
-.workspace-schema-relation { display:inline-flex; align-items:center; flex-wrap:wrap; gap:5px; max-width:100%; color:var(--muted); font-size:9px; line-height:1.5; }
-.workspace-schema-relation-label { font-size:8px; font-weight:500; }
+.workspace-schema-relation { display:inline-flex; align-items:center; flex-wrap:wrap; gap:5px; max-width:100%; color:var(--muted); font-size:11px; line-height:1.5; }
+.workspace-schema-relation-label { font-size:11px; font-weight:500; }
 .workspace-schema-relation code,.workspace-schema-extra-constraint { max-width:100%; padding:2px 5px; border-radius:3px; background:var(--subtle); color:var(--text); font:inherit; overflow-wrap:anywhere; }
-.workspace-schema-extra-constraint { color:var(--muted); font-size:9px; }
+.workspace-schema-extra-constraint { color:var(--muted); font-size:11px; }
 .practice-mobile-list-select { min-height:40px; max-width:min(48vw,200px); padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface); color:var(--text); font-size:12px; }
 .ai-chat-input { flex-wrap:wrap; }
 .ai-chat-input .field-error { flex-basis:100%; margin:0; }
@@ -179,7 +179,7 @@
 .teacher-list-detail-panel > p,.teacher-list-detail-facts > div,.teacher-empty-state p,.teacher-preview-dialog p,.teacher-draft-visibility,.teacher-form-message,.teacher-option-row b,.teacher-option-row small,.teacher-publish-checklist li,.teacher-timezone,.teacher-visibility-help,.teacher-editor-state,.teacher-seed-summary,.teacher-code-title { font-size:12px; line-height:18px; }
 .teacher-code-editor,.teacher-readonly-code { font-size:12px; }
 .teacher-class-chip,.teacher-class-options label,.teacher-readonly-field,.teacher-add-class,.teacher-add-problem-list small,.teacher-class-detail-heading p,.teacher-class-details > p,.teacher-class-assignment-topline strong,.teacher-class-assignment-topline b,.teacher-class-student-name strong,.teacher-class-student-stat strong,.teacher-table-link,.teacher-class-identity small,.teacher-member-list small,.teacher-review-code-section h2,.teacher-auto-score,.teacher-attempt-label,.teacher-attempt-pill,.teacher-status-review { font-size:11px; line-height:17px; }
-.teacher-class-assignment-topline small,.teacher-class-student-name small,.teacher-class-student-stat small,.teacher-detail-eyebrow { font-size:10px; line-height:16px; }
+.teacher-class-assignment-topline small,.teacher-class-student-name small,.teacher-class-student-stat small,.teacher-detail-eyebrow { font-size:11px; line-height:16px; }
 .teacher-student-search input { min-height:40px; padding:9px 11px; font-size:12px; }
 .teacher-list-actions a,.teacher-list-actions button,.teacher-selectable-row-title,.admin-row-link,.admin-cell-button,.admin-cell-selected,.admin-danger-link,.admin-warning-link { font-size:12px; line-height:18px; }
 .teacher-list-actions a,.teacher-list-actions button,.admin-danger-link,.admin-warning-link { min-height:34px; display:inline-flex; align-items:center; }
@@ -248,7 +248,7 @@
   .admin-edit-access { position:static; }
   .teacher-page table td,.admin-page table td { font-size:12px; line-height:18px; }
   .teacher-page table td:first-child,.admin-page table td:first-child { font-size:13px; line-height:20px; }
-  .teacher-page table td::before,.admin-page table td::before { font-size:10px; }
+  .teacher-page table td::before,.admin-page table td::before { font-size:11px; }
   .teacher-page table tr,.admin-page table tr { padding:12px; }
   .teacher-readonly-code { font-size:12px; }
   .teacher-list-table-scroll,.admin-table-wrap { overflow:visible; }
@@ -268,7 +268,7 @@
   .teacher-list-filters,.teacher-problem-filters,.teacher-activity-filters,.teacher-results-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .teacher-library-table td,.teacher-assignment-list-table td,.teacher-contest-list-table td,.teacher-activity-results-table td,.teacher-classes-table td,.teacher-results-table td,.teacher-test-results td,.admin-table td { font-size:12px; line-height:18px; }
   .teacher-library-table td:first-child,.teacher-assignment-list-table td:first-child,.teacher-contest-list-table td:first-child,.teacher-activity-results-table td:first-child,.teacher-classes-table td:first-child,.teacher-results-table td:first-child,.teacher-test-results td:first-child,.admin-table td:first-child { font-size:13px; line-height:20px; }
-  .teacher-library-table td:not(:first-child)::before,.teacher-assignment-list-table td:not(:first-child)::before,.teacher-contest-list-table td:not(:first-child)::before,.teacher-activity-results-table td:not(:first-child)::before,.teacher-classes-table td:not(:first-child)::before,.teacher-results-table td:not(:first-child)::before,.teacher-test-results td:not(:first-child)::before,.admin-table td:not(:first-child)::before { font-size:10px; }
+  .teacher-library-table td:not(:first-child)::before,.teacher-assignment-list-table td:not(:first-child)::before,.teacher-contest-list-table td:not(:first-child)::before,.teacher-activity-results-table td:not(:first-child)::before,.teacher-classes-table td:not(:first-child)::before,.teacher-results-table td:not(:first-child)::before,.teacher-test-results td:not(:first-child)::before,.admin-table td:not(:first-child)::before { font-size:11px; }
   .teacher-library-table tr,.teacher-assignment-list-table tr,.teacher-contest-list-table tr,.teacher-activity-results-table tr,.teacher-classes-table tr,.teacher-results-table tr,.teacher-test-results tr,.admin-table tr { padding:12px; }
   .teacher-list-table-scroll,.admin-table-wrap { overflow:visible; }
   .admin-table { display:block; width:100%; }
@@ -425,7 +425,7 @@
   border-radius: 999px;
   background: var(--accent-subtle);
   color: var(--accent);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.05em;
 }
@@ -471,6 +471,16 @@
   }
 }
 @media (max-width: 480px) {
+  /* Five header controls plus the wordmark do not fit at phone width: the account button, the only way to log out, was pushed off screen. */
+  .role-header:not(.workspace-header) {
+    gap: 8px;
+  }
+  .role-header:not(.workspace-header) .brand-name {
+    display: none;
+  }
+  .role-header:not(.workspace-header) .student-header-status {
+    gap: 4px;
+  }
   .auth-brand-panel {
     padding: 22px 20px;
   }
