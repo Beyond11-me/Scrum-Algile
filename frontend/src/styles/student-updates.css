@@ -571,6 +571,17 @@ body:has(.practice-page) {
   font-size: 11px;
   color: var(--muted);
 }
+.assignments-page .class-card {
+  background: color-mix(in srgb, var(--surface) 95%, var(--accent) 5%);
+  border-color: color-mix(in srgb, var(--border) 75%, var(--accent) 25%);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--text) 12%, transparent);
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+.assignments-page .class-card:hover {
+  background: color-mix(in srgb, var(--surface) 91%, var(--accent) 9%);
+  border-color: var(--accent);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 18%, transparent);
+}
 .assignment-deadline-panel {
   position: sticky;
   top: calc(var(--header-height) + 20px);
