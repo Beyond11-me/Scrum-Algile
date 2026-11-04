@@ -12,17 +12,6 @@ class UserBase(BaseModel):
     initials: str
     role: str = "student"
 
-class UserCreate(BaseModel):
-    email: str
-    name: str
-    password: str
-
-class LecturerRegisterRequest(BaseModel):
-    email: str
-    name: str
-    password: str
-    department: str
-
 class UserResponse(UserBase):
     id: str
 

@@ -6,7 +6,6 @@ import {
 type Auth = {
   session: StudentSession | null;
   login: (email: string, password: string) => Promise<StudentSession>;
-  register: (name: string, email: string, password: string) => Promise<void>;
   demoLogin: () => Promise<void>;
   logout: () => void;
 };
@@ -29,8 +28,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(user);
       return user;
     },
-    register: async (n, e, p) =>
-      setSession(await authService.register(n, e, p)),
     demoLogin: async () => setSession(await authService.demoLogin()),
     logout: () => {
       authService.logout();

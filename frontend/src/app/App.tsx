@@ -14,8 +14,6 @@ import {
 import {
   ForgotPasswordPage,
   LoginPage,
-  RegisterPage,
-  RegisterLecturerPage,
   ResetPasswordPage,
   VerifyOtpPage,
 } from "../pages/auth/AuthPages";
@@ -113,8 +111,6 @@ export function App() {
         />
         <Route element={<PublicOnlyRoute />}>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/register-lecturer" element={<RegisterLecturerPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />

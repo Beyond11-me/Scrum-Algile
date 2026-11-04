@@ -1,8 +1,8 @@
 """Exercise the local Compose stack through the same reverse proxy as the UI."""
 import json
 import os
+import urllib.error
 import urllib.request
-import uuid
 
 BASE = os.getenv("SMOKE_BASE_URL", "http://127.0.0.1:" + os.getenv("FRONTEND_PORT", "8080"))
 API = os.getenv("SMOKE_API_URL", "http://127.0.0.1:" + os.getenv("BACKEND_PORT", "8000"))
@@ -27,9 +27,11 @@ with urllib.request.urlopen(API + "/healthz", timeout=10) as response:
     health = json.load(response)
     assert health == {"status": "ok", "revision": os.getenv("IMAGE_REVISION", "local")}, health
 
-email = f"ci-{uuid.uuid4().hex}@example.test"
-session = request("/api/auth/register", {"name": "CI Student", "email": email, "password": "LocalTest123"})
-token = session["access_token"]
-profile = request("/api/auth/me", token=token)
-assert profile["email"] == email and profile["role"] == "student", profile
-print("Compose smoke test passed: SPA fallback, proxy, registration, auth and SQL Server.")
+# Unknown credentials force a real user lookup, so a 400 proves proxy, auth and SQL Server all work.
+try:
+    request("/api/auth/login", {"email": "ci-smoke@example.test", "password": "LocalTest123"})
+    raise AssertionError("Login with unknown credentials must fail")
+except urllib.error.HTTPError as error:
+    assert error.code == 400, error.code
+    assert json.load(error)["detail"] == "Incorrect email or password"
+print("Compose smoke test passed: SPA fallback, proxy, auth and SQL Server.")

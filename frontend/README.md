@@ -41,7 +41,7 @@ The project uses Vite's proxy feature (configured in `vite.config.ts`) to automa
 Unlike the initial mockup phase, this frontend is **fully integrated with the live FastAPI backend**.
 
 - **API Client (`src/services/apiClient.ts`)**: Handles all HTTP requests, automatically attaching the JWT `Authorization` header if a user is logged in.
-- **Authentication (`src/services/authService.ts`)**: Connects to the real backend login/registration endpoints. The JWT token is securely saved in `localStorage`.
+- **Authentication (`src/services/authService.ts`)**: Connects to the real backend login endpoints. The JWT token is securely saved in `localStorage`.
 - **Student API (`src/services/studentApi.ts`)**: Handles fetching problems, submitting SQL queries for grading, and retrieving dashboard statistics.
 - **Teacher API (`src/services/teacherService.ts`)**: Handles instructor-facing features like reviewing submissions, managing classes, and creating assignments.
 - **Admin API (`src/services/adminService.ts`)**: Handles platform-wide management features.
