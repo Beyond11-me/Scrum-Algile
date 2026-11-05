@@ -84,12 +84,12 @@ function AddUserDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (user: 
     const cleanEmail = email.trim().toLowerCase();
     if (!PERSON_NAME.test(cleanName)) next.name = "Use 2–100 letters and spaces, with no accents or digits.";
     if (!cleanEmail || cleanEmail.length > 255 || !ACCOUNT_EMAIL.test(cleanEmail)) next.email = "Enter a valid email address.";
-    if (!passwordRequirements(password, "admin")[0].met) next.password = "Use 8–64 characters.";
+    if (role === "Admin" && !passwordRequirements(password, "admin")[0].met) next.password = "Use 8–64 characters.";
     setErrors(next);
     if (Object.keys(next).length) return;
     setLoading(true);
     try {
-      const newUser = await adminService.createUser({ name: cleanName, email: cleanEmail, role, password });
+      const newUser = await adminService.createUser({ name: cleanName, email: cleanEmail, role, ...(role === "Admin" ? { password } : {}) });
       onAdd(newUser);
     } catch (err: unknown) {
       const fields = formFields(err);
@@ -102,8 +102,7 @@ function AddUserDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (user: 
   return <Dialog title="Add user" onClose={onClose} className="admin-dialog"><form onSubmit={submit} className="admin-dialog-form" noValidate>
     <Field label="NAME"><input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Nguyen Van An" maxLength={100} aria-invalid={!!errors.name} />{errors.name && <small className="field-error">{errors.name}</small>}</Field>
     <Field label="EMAIL"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.edu" maxLength={255} aria-invalid={!!errors.email} />{errors.email && <small className="field-error">{errors.email}</small>}</Field>
-    <Field label="PASSWORD"><PasswordInput label="password" value={password} onChange={(e) => { setPassword(e.target.value); setErrors((previous) => ({ ...previous, password: "" })); }} placeholder="At least 8 characters" maxLength={64} autoComplete="new-password" aria-invalid={!!errors.password} aria-describedby="add-user-password-requirements" />{errors.password && <small className="field-error">{errors.password}</small>}</Field>
-    <PasswordChecklist id="add-user-password-requirements" password={password} policy="admin" />
+    {role === "Admin" ? <><Field label="PASSWORD"><PasswordInput label="password" value={password} onChange={(e) => { setPassword(e.target.value); setErrors((previous) => ({ ...previous, password: "" })); }} placeholder="At least 8 characters" maxLength={64} autoComplete="new-password" aria-invalid={!!errors.password} aria-describedby="add-user-password-requirements" />{errors.password && <small className="field-error">{errors.password}</small>}</Field><PasswordChecklist id="add-user-password-requirements" password={password} policy="admin" /></> : <p className="tiny muted">A random password will be emailed to this person.</p>}
     <Field label="ROLE"><SelectMenu value={role} onChange={(e) => setRole(e.target.value as AdminUser["role"])}><option>Student</option><option>Lecturer</option><option>Admin</option></SelectMenu></Field>
     {errors.form && <p className="admin-warning" style={{ margin: 0 }}>{errors.form}</p>}
     <div className="admin-dialog-actions"><button type="button" className="button" onClick={onClose} disabled={loading}>Cancel</button><button className="button primary" disabled={loading}>{loading ? "Adding..." : "Add user"}</button></div>
@@ -319,7 +318,7 @@ export function AdminUsersPage() {
       const data = await adminService.getUsers();
       setUsers(data);
       revealNewAccount();
-      setNotice(`${result.created} created · ${result.duplicates} duplicates · ${result.invalid} invalid. The result file lists each password once.`);
+      setNotice(`${result.created} created · ${result.duplicates} duplicates · ${result.invalid} invalid. Check the result file for email delivery status and any passwords that need manual delivery.`);
     } catch (err: unknown) {
       setNotice(err instanceof Error ? err.message : "Could not import accounts.");
     } finally {
@@ -379,7 +378,7 @@ export function AdminUsersPage() {
       <p className={selected.status === "Active" ? "admin-success admin-detail-status" : "admin-warning admin-detail-status"}>{selected.status} · Joined {selected.joined}</p>
       <div className="admin-button-stack"><Link className="button admin-button" to={`/admin/users/${encodeURIComponent(selected.email)}/edit`}>Edit account</Link><button type="button" className="button admin-button" onClick={() => setResetTarget(selected)}>Reset password</button>{!ownAccount && <button type="button" className="button admin-reject-button" onClick={() => setRemoveTarget(selected)}>Remove account</button>}</div>
     </> : <><h2>Account details</h2><p className="admin-muted">Select an account to review its access.</p></>} />
-    {dialog && <AddUserDialog onClose={() => setDialog(false)} onAdd={(user) => { setUsers((all) => [user, ...all]); setSelectedEmail(user.email); revealNewAccount(); setDialog(false); setNotice(`${user.name} was added successfully.`); }} />}
+    {dialog && <AddUserDialog onClose={() => setDialog(false)} onAdd={(user) => { setUsers((all) => [user, ...all]); setSelectedEmail(user.email); revealNewAccount(); setDialog(false); setNotice(user.emailDelivery === "failed" ? `${user.name} was created, but the email could not be sent. Check the SMTP settings and deliver the password securely.` : `${user.name} was added successfully${user.emailDelivery === "sent" ? " and credentials were emailed" : ""}.`); }} />}
     {resetTarget && <ResetPasswordDialog email={resetTarget.email} name={resetTarget.name} onClose={(message, nextPassword) => { const email = resetTarget.email; setResetTarget(null); if (nextPassword) setUsers((all) => all.map((user) => user.email === email ? { ...user, password: nextPassword } : user)); if (message) setNotice(message); }} />}
     {removeTarget && <RemoveAccountDialog user={removeTarget} onClose={() => setRemoveTarget(null)} onRemoved={() => { const email = removeTarget.email; setUsers((all) => all.filter((user) => user.email !== email)); setRemoveTarget(null); setNotice(`Removed ${email}. This cannot be undone.`); }} />}
   </div>;

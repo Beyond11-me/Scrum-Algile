@@ -111,6 +111,7 @@ def update_profile(
         except ValueError as exc:
             raise HTTPException(status_code=400, detail={"newPassword": str(exc)})
         apply_password(current_user, next_password)
+        current_user.first_login_pending = False
 
     if name_changed:
         current_user.name = next_name
@@ -140,6 +141,14 @@ def demo_login(db: Session = Depends(get_db)):
         
     token = create_access_token(data={"sub": user.email})
     return {"access_token": token, "token_type": "bearer", "user": user}
+
+@router.post("/first-login/dismiss", response_model=UserResponse)
+def dismiss_first_login(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    current_user.first_login_pending = False
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
 
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):

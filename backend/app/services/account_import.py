@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import csv
 import io
+import smtplib
 from dataclasses import dataclass
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.security import apply_password
+from app.services.account_mail import send_initial_password
 from app.models import ActivityLog, User
 from app.services.account_policy import (
     canonical_role,
@@ -131,6 +133,7 @@ def import_accounts(db: Session, admin: User, raw: bytes) -> AccountImportResult
             status="Active",
         )
         apply_password(user, password)
+        user.first_login_pending = role in {"student", "instructor"}
         db.add(user)
         assign_user_role(db, user, role)
         seen.add(email)
@@ -140,4 +143,14 @@ def import_accounts(db: Session, admin: User, raw: bytes) -> AccountImportResult
     if created:
         db.add(ActivityLog(user_id=admin.id, action=f"Imported {created} accounts from CSV"))
     db.commit()
-    return AccountImportResult(created, duplicates, invalid, _report(report))
+    delivered = []
+    for email, name, role, status, password, message in report:
+        if status == "created" and role in {"Student", "Lecturer"}:
+            try:
+                send_initial_password(email, password)
+                message = "Credentials emailed"
+                password = ""
+            except (OSError, RuntimeError, smtplib.SMTPException):
+                message = "Email failed; use the password in this report"
+        delivered.append((email, name, role, status, password, message))
+    return AccountImportResult(created, duplicates, invalid, _report(delivered))

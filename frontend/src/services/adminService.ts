@@ -10,6 +10,7 @@ export interface AdminUser {
   joined: string;
   detail: string;
   password?: string;
+  emailDelivery?: "sent" | "failed";
 }
 
 export type LecturerOption = {
@@ -30,7 +31,7 @@ export const adminService = {
     });
   },
 
-  async createUser(data: { name: string; email: string; role: string; password: string }): Promise<AdminUser> {
+  async createUser(data: { name: string; email: string; role: string; password?: string }): Promise<AdminUser> {
     return apiFetch("/api/admin/users", {
       method: "POST",
       body: JSON.stringify(data),

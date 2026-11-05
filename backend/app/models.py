@@ -49,6 +49,7 @@ class User(Base):
     email = Column(Unicode(255), unique=True, index=True, nullable=False)
     hashed_password = Column(Unicode(255), nullable=False)
     password_record = Column(Unicode(512), nullable=True)
+    first_login_pending = Column(Boolean, default=False, nullable=False)
     name = Column(Unicode(255), nullable=False)
     initials = Column(Unicode(10), nullable=False)
     # Kept while routers and frontend migrate to the normalised role relation.

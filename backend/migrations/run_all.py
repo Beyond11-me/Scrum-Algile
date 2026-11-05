@@ -53,6 +53,9 @@ def run_all() -> None:
     except ImportError:
         pass
 
+    from migrations.first_login_prompt_v1 import migrate as first_login_prompt_migrate
+    migrations.append(("first_login_prompt_v1", first_login_prompt_migrate))
+
     succeeded = 0
     failed = 0
     for name, func in migrations:

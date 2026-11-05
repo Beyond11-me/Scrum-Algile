@@ -117,7 +117,7 @@ Result comparison rules:
 
 You need Docker Desktop (Linux containers, Docker Compose) and enough resources for SQL Server. On ARM machines, the `linux/amd64` SQL Server image may require emulation and its support and performance are not guaranteed; check Microsoft's documentation for your platform. The SQL Server Developer image is for development only, not production.
 
-1. Copy `.env.example` to `.env` and change `MSSQL_SA_PASSWORD` and `SECRET_KEY`. The SQL password must meet SQL Server's complexity rules and contain only letters and digits, because it is embedded in the connection URL. Do not commit `.env`. The Gemini key is optional.
+1. Copy `.env.example` to `.env` and change `MSSQL_SA_PASSWORD` and `SECRET_KEY`. The SQL password must meet SQL Server's complexity rules and contain only letters and digits, because it is embedded in the connection URL. Do not commit `.env`. The Gemini key is optional. To email initial credentials for admin-created and CSV-imported Student/Lecturer accounts, configure the `Email__SmtpHost`, `Email__SmtpPort`, `Email__Security`, `Email__Username`, `Email__AppPassword`, and `Email__FromAddress` values shown in `.env.example`. Port 587 uses STARTTLS; port 465 uses TLS from connection start. Account creation reports delivery failures so an admin can recover the generated password.
 2. From the repository root, run:
 
    ```bash
