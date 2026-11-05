@@ -1,0 +1,24 @@
+{
+  "name": "aigile-ai-manager",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "manager": "tsx src/run.ts",
+    "manager:demo": "tsx src/run.ts --demo",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/*.test.ts"
+  },
+  "dependencies": {
+    "@mastra/core": "^1.82.0",
+    "@notionhq/client": "^5.31.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,42 @@
+name: AI Manager
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 08:00, 11:00, 14:00 and 17:00 in Vietnam, Monday to Friday.
+    - cron: '0 1,4,7,10 * * 1-5'
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+
+concurrency:
+  group: ai-manager
+  cancel-in-progress: false
+
+jobs:
+  brief:
+    name: Publish manager brief to Notion
+    # Never use the self-hosted deploy runner here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: automation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: automation/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run manager
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ vars.NOTION_DATABASE_ID }}
+          NOTION_BRIEF_PAGE_ID: ${{ vars.NOTION_BRIEF_PAGE_ID }}
+          GEMINI_API_KEY: ${{ secrets.AI_MANAGER_GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
