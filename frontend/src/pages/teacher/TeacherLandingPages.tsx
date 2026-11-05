@@ -1,6 +1,6 @@
 import { SelectMenu } from "../../components/SelectMenu";
 import { useMemo, useState, useEffect, useRef } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ErrorState, Loading } from "../../components/ui";
 import { InstructorOnlyButton } from "../../components/withRoleAccess";
 import { teacherService } from "../../services/teacherService";
@@ -19,7 +19,6 @@ type ProblemRow = {
 
 export function ProblemLibraryPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [problems, setProblemState] = useState<ProblemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -52,7 +51,6 @@ export function ProblemLibraryPage() {
   const [search, setSearch] = useState("");
   const [difficulty, setDifficulty] = useState("All levels");
   const [topic, setTopic] = useState("All topics");
-  const [visibility, setVisibility] = useState(() => searchParams.get("visibility") || "All");
   const [selectedProblemId, setSelectedProblemId] = useState("");
   const [page, setPage] = useState(1);
   const tableScrollRef = useRef<HTMLDivElement>(null);
@@ -62,10 +60,9 @@ export function ProblemLibraryPage() {
         (problem) =>
           `${problem.title} ${problem.topics}`.toLowerCase().includes(search.toLowerCase()) &&
           (difficulty === "All levels" || problem.difficulty === difficulty) &&
-          (topic === "All topics" || problem.topics.toLowerCase().includes(topic.toLowerCase())) &&
-          (visibility === "All" || problem.visibility === visibility),
+          (topic === "All topics" || problem.topics.toLowerCase().includes(topic.toLowerCase())),
       ),
-    [problems, search, difficulty, topic, visibility],
+    [problems, search, difficulty, topic],
   );
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / 15));
@@ -78,10 +75,10 @@ export function ProblemLibraryPage() {
   useEffect(() => {
     setPage(1);
     setSelectedProblemId("");
-  }, [search, difficulty, topic, visibility]);
+  }, [search, difficulty, topic]);
   useEffect(() => {
     tableScrollRef.current?.scrollTo({ top: 0 });
-  }, [currentPage, search, difficulty, topic, visibility]);
+  }, [currentPage, search, difficulty, topic]);
   const topicOptions = [
     ...new Set(
       problems.flatMap((problem) =>
@@ -114,13 +111,14 @@ export function ProblemLibraryPage() {
             description={includeArchived ? "There are no archived questions in your bank." : "Create your first SQL problem with a schema, seed data and a reference solution."}
             primaryLabel="New problem"
             primaryTo="/teacher/problems/new"
-            secondaryLabel="Browse public problems"
-            secondaryTo="/teacher/problems?visibility=Public"
+            secondaryLabel="Back to problems"
+            secondaryTo="/teacher/problems"
           />
         </>
       ) : (
         <>
           <div className="teacher-list-filters teacher-problem-filters">
+            <div className="teacher-problem-filter-fields">
             <TeacherField label="SEARCH">
               <input
                 value={search}
@@ -147,16 +145,8 @@ export function ProblemLibraryPage() {
                 ))}
               </SelectMenu>
             </TeacherField>
-            <TeacherField label="VISIBILITY">
-              <SelectMenu
-                value={visibility}
-                onChange={(event) => setVisibility(event.target.value)}
-              >
-                <option>All</option>
-                <option>Public</option>
-                <option>Private</option>
-              </SelectMenu>
-            </TeacherField>
+            </div>
+            <div className="teacher-problem-filter-actions">
             <button className="button teacher-archive-toggle" type="button" onClick={() => setIncludeArchived((value) => !value)}>
               {includeArchived ? "Hide archived" : "Show archived"}
             </button>
@@ -167,6 +157,7 @@ export function ProblemLibraryPage() {
             >
               New problem
             </InstructorOnlyButton>
+            </div>
           </div>
           <div className="teacher-list-detail-layout">
             <div className="teacher-list-detail-main">
@@ -181,7 +172,6 @@ export function ProblemLibraryPage() {
                       <th>PROBLEM</th>
                       <th>DIFFICULTY</th>
                       <th>TOPICS</th>
-                      <th>VISIBILITY</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -202,14 +192,13 @@ export function ProblemLibraryPage() {
                             {problem.title}
                           </Link>
                         </td>
-                        <td data-label="DIFFICULTY">{problem.difficulty}</td>
+                        <td data-label="DIFFICULTY" className={`teacher-label-${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</td>
                         <td data-label="TOPICS">{problem.topics}</td>
-                        <td data-label="VISIBILITY">{problem.visibility}</td>
                       </tr>
                     ))}
                     {!filtered.length && (
                       <tr>
-                        <td className="teacher-empty-row" colSpan={5}>
+                        <td className="teacher-empty-row" colSpan={4}>
                           No problems match these filters.
                         </td>
                       </tr>
@@ -265,7 +254,7 @@ export function ProblemLibraryPage() {
                     <dl className="teacher-list-detail-facts">
                       <div>
                         <dt>Difficulty</dt>
-                        <dd>{selectedProblem.difficulty}</dd>
+                        <dd className={`teacher-label-${selectedProblem.difficulty.toLowerCase()}`}>{selectedProblem.difficulty}</dd>
                       </div>
                       <div>
                         <dt>Visibility</dt>
@@ -457,7 +446,7 @@ export function AssignmentsListPage() {
                         </td>
                         <td data-label="CLASSES">{item.classes}</td>
                         <td data-label="PROBLEMS">{item.problemCount} problems</td>
-                        <td data-label="STATUS">{item.status}</td>
+                        <td data-label="STATUS" className={`teacher-label-${item.status.toLowerCase()}`}>{item.status}</td>
                         <td data-label="DUE DATE">{item.closes}</td>
                       </tr>
                     ))}
@@ -515,7 +504,7 @@ export function AssignmentsListPage() {
                     <dl className="teacher-list-detail-facts">
                       <div>
                         <dt>Status</dt>
-                        <dd>{selected.status}</dd>
+                        <dd className={`teacher-label-${selected.status.toLowerCase()}`}>{selected.status}</dd>
                       </div>
                       <div>
                         <dt>Problems</dt>

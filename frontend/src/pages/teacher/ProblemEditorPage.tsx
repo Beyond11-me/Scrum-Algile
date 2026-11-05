@@ -665,7 +665,7 @@ export function ProblemEditorPage() {
           </div>
           </section>
           <section className="teacher-problem-details-section teacher-problem-topics-section">
-            <TeacherSectionTitle title="Topics & visibility" />
+            <TeacherSectionTitle title={selectedId === "new" ? "Topics" : "Topics & visibility"} />
           <TeacherField label="TOPICS">
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
               {[...PROBLEM_TOPIC_OPTIONS, "OTHER"].map(t => {
@@ -748,6 +748,7 @@ export function ProblemEditorPage() {
               )}
             </div>
           )}
+          {selectedId !== "new" && (
           <TeacherField label="VISIBILITY">
             <SelectMenu
               value={problem.visibility}
@@ -762,6 +763,7 @@ export function ProblemEditorPage() {
                 : "Public problems are listed in Practice for all students."}
             </small>
           </TeacherField>
+          )}
           </section>
           <section className="teacher-problem-details-section teacher-problem-content-section">
             <TeacherSectionTitle title="Problem content" />

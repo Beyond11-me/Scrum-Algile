@@ -103,7 +103,7 @@ export function ResultsDashboardPage() {
       const isNeedsReview = item.finalScore === null || item.finalScore === undefined;
       const matchStatus =
         statusFilter === "All" ||
-        (statusFilter === "Needs review" && isNeedsReview) ||
+        (statusFilter === "Auto-graded" && isNeedsReview) ||
         (statusFilter === "Reviewed" && !isNeedsReview) ||
         statusFilter === item.status;
       return matchSearch && matchStatus;
@@ -133,7 +133,7 @@ export function ResultsDashboardPage() {
         <TeacherField label="REVIEW STATUS">
           <SelectMenu value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option>All</option>
-            <option>Needs review</option>
+            <option>Auto-graded</option>
             <option>Reviewed</option>
           </SelectMenu>
         </TeacherField>
@@ -168,9 +168,9 @@ export function ResultsDashboardPage() {
                     </td>
                     <td data-label="PROBLEM">{item.problemTitle}</td>
                     <td data-label="AUTO SCORE">{item.autoScore}</td>
-                    <td data-label="FINAL SCORE">{item.finalScore !== null && item.finalScore !== undefined ? item.finalScore : "—"}</td>
-                    <td data-label="STATUS" className={item.finalScore === null || item.finalScore === undefined ? "teacher-state-warning" : "teacher-state-success"}>
-                      {item.finalScore === null || item.finalScore === undefined ? "Needs review" : item.status}
+                    <td data-label="FINAL SCORE" className={item.finalScore != null ? "teacher-state-success" : undefined}>{item.finalScore ?? item.autoScore}</td>
+                    <td data-label="STATUS" className={item.finalScore === null || item.finalScore === undefined ? "teacher-state-auto-graded" : "teacher-state-success"}>
+                      {item.finalScore === null || item.finalScore === undefined ? "Auto-graded" : item.status}
                     </td>
                     <td data-label="SUBMITTED">{item.submittedAt ? new Date(item.submittedAt).toLocaleDateString() : ""}</td>
                     <td data-label="ACTIONS" className="teacher-list-actions">
@@ -199,8 +199,8 @@ export function ResultsDashboardPage() {
               <p className="muted">{selectedResult.problemTitle}</p>
               <dl className="teacher-list-detail-facts">
                 <div><dt>Auto score</dt><dd>{selectedResult.autoScore}</dd></div>
-                <div><dt>Final score</dt><dd>{selectedResult.finalScore !== null && selectedResult.finalScore !== undefined ? selectedResult.finalScore : "Not graded yet"}</dd></div>
-                <div><dt>Status</dt><dd>{selectedResult.finalScore === null || selectedResult.finalScore === undefined ? "Needs review" : selectedResult.status}</dd></div>
+                <div><dt>Final score</dt><dd className={`teacher-detail-score${selectedResult.finalScore != null ? " teacher-state-success" : ""}`}>{selectedResult.finalScore ?? selectedResult.autoScore}</dd></div>
+                <div><dt>Status</dt><dd className={selectedResult.finalScore === null || selectedResult.finalScore === undefined ? "teacher-state-auto-graded" : "teacher-state-success"}>{selectedResult.finalScore === null || selectedResult.finalScore === undefined ? "Auto-graded" : selectedResult.status}</dd></div>
                 {selectedResult.feedback && <div><dt>Feedback</dt><dd>{selectedResult.feedback}</dd></div>}
               </dl>
               <button className="button primary teacher-list-detail-edit" type="button" onClick={() => navigate(`/teacher/results/review/${selectedResult.id}`)}>Review submission</button>
