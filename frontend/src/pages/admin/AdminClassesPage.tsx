@@ -1,7 +1,9 @@
 import { SelectMenu } from "../../components/SelectMenu";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Eye, EyeOff, Search } from "lucide-react";
+import { PasswordChecklist, PasswordInput } from "../../components/PasswordInput";
+import { passwordRequirements } from "../../utils/passwordRequirements";
 import { Dialog, Empty, ErrorState, Loading } from "../../components/ui";
 import { AdminOnlyButton } from "../../components/withRoleAccess";
 import { useAuth } from "../../context/AuthContext";
@@ -72,7 +74,6 @@ function AddUserDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (user: 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<AdminUser["role"]>("Student");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
@@ -83,8 +84,7 @@ function AddUserDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (user: 
     const cleanEmail = email.trim().toLowerCase();
     if (!PERSON_NAME.test(cleanName)) next.name = "Use 2–100 letters and spaces, with no accents or digits.";
     if (!cleanEmail || cleanEmail.length > 255 || !ACCOUNT_EMAIL.test(cleanEmail)) next.email = "Enter a valid email address.";
-    if (password.length < 8) next.password = "Password must be at least 8 characters.";
-    if (password.length > 64) next.password = "Password must be at most 64 characters.";
+    if (!passwordRequirements(password, "admin")[0].met) next.password = "Use 8–64 characters.";
     setErrors(next);
     if (Object.keys(next).length) return;
     setLoading(true);
@@ -102,7 +102,8 @@ function AddUserDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (user: 
   return <Dialog title="Add user" onClose={onClose} className="admin-dialog"><form onSubmit={submit} className="admin-dialog-form" noValidate>
     <Field label="NAME"><input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Nguyen Van An" maxLength={100} aria-invalid={!!errors.name} />{errors.name && <small className="field-error">{errors.name}</small>}</Field>
     <Field label="EMAIL"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.edu" maxLength={255} aria-invalid={!!errors.email} />{errors.email && <small className="field-error">{errors.email}</small>}</Field>
-    <Field label="PASSWORD"><input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" maxLength={64} aria-invalid={!!errors.password} />{errors.password && <small className="field-error">{errors.password}</small>}<button type="button" className="text-button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide password" : "Show password"}</button></Field>
+    <Field label="PASSWORD"><PasswordInput label="password" value={password} onChange={(e) => { setPassword(e.target.value); setErrors((previous) => ({ ...previous, password: "" })); }} placeholder="At least 8 characters" maxLength={64} autoComplete="new-password" aria-invalid={!!errors.password} aria-describedby="add-user-password-requirements" />{errors.password && <small className="field-error">{errors.password}</small>}</Field>
+    <PasswordChecklist id="add-user-password-requirements" password={password} policy="admin" />
     <Field label="ROLE"><SelectMenu value={role} onChange={(e) => setRole(e.target.value as AdminUser["role"])}><option>Student</option><option>Lecturer</option><option>Admin</option></SelectMenu></Field>
     {errors.form && <p className="admin-warning" style={{ margin: 0 }}>{errors.form}</p>}
     <div className="admin-dialog-actions"><button type="button" className="button" onClick={onClose} disabled={loading}>Cancel</button><button className="button primary" disabled={loading}>{loading ? "Adding..." : "Add user"}</button></div>
@@ -112,7 +113,6 @@ function AddUserDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (user: 
 function ResetPasswordDialog({ email, name, onClose }: { email: string; name: string; onClose: (notice?: string, password?: string) => void }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [generated, setGenerated] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -135,8 +135,7 @@ function ResetPasswordDialog({ email, name, onClose }: { email: string; name: st
   async function submit(event: FormEvent) {
     event.preventDefault();
     const next: Record<string, string> = {};
-    if (password.length < 8) next.password = "Password must be at least 8 characters.";
-    if (password.length > 64) next.password = "Password must be at most 64 characters.";
+    if (!passwordRequirements(password, "admin")[0].met) next.password = "Use 8–64 characters.";
     if (password !== confirm) next.confirm = "Passwords must match.";
     setErrors(next);
     if (Object.keys(next).length) return;
@@ -158,8 +157,9 @@ function ResetPasswordDialog({ email, name, onClose }: { email: string; name: st
       <div className="admin-dialog-actions"><button type="button" className="button primary" onClick={() => onClose(`Password reset for ${name}.`, generated)}>Close</button></div>
     </div> : <form onSubmit={submit} className="admin-dialog-form" noValidate>
       <p className="admin-muted">{name} · {email}</p>
-      <Field label="NEW PASSWORD"><input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} maxLength={64} aria-invalid={!!errors.password} />{errors.password && <small className="field-error">{errors.password}</small>}<button type="button" className="text-button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide password" : "Show password"}</button></Field>
-      <Field label="CONFIRM PASSWORD"><input type={showPassword ? "text" : "password"} value={confirm} onChange={(event) => setConfirm(event.target.value)} maxLength={64} aria-invalid={!!errors.confirm} />{errors.confirm && <small className="field-error">{errors.confirm}</small>}</Field>
+      <Field label="NEW PASSWORD"><PasswordInput label="new password" value={password} onChange={(event) => { setPassword(event.target.value); setErrors((previous) => ({ ...previous, password: "", confirm: "" })); }} maxLength={64} autoComplete="new-password" aria-invalid={!!errors.password} aria-describedby="reset-password-requirements" />{errors.password && <small className="field-error">{errors.password}</small>}</Field>
+      <Field label="CONFIRM PASSWORD"><PasswordInput label="confirm password" value={confirm} onChange={(event) => { setConfirm(event.target.value); setErrors((previous) => ({ ...previous, confirm: "" })); }} maxLength={64} autoComplete="new-password" aria-invalid={!!errors.confirm} aria-describedby="reset-password-requirements" />{errors.confirm && <small className="field-error">{errors.confirm}</small>}</Field>
+      <PasswordChecklist id="reset-password-requirements" password={password} policy="admin" confirm={confirm} />
       {errors.form && <p className="admin-warning" style={{ margin: 0 }}>{errors.form}</p>}
       <div className="admin-dialog-actions"><button type="button" className="button" onClick={generate} disabled={busy}>Generate password</button><button className="button primary" disabled={busy}>{busy ? "Saving..." : "Reset password"}</button></div>
     </form>}
@@ -476,7 +476,7 @@ export function AdminEditAccountPage() {
           <Field label="ACCOUNT STATUS"><SelectMenu value={status} disabled={currentUser.email.toLowerCase() === session?.email.toLowerCase()} onChange={(event) => setStatus(event.target.value as AdminUser["status"])}><option>Active</option><option>Inactive</option></SelectMenu></Field>
         </div>
         <div className="account-secret">
-          <div><span>Password</span><button type="button" className="text-button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide" : "Show"}</button></div>
+          <div><span>Password</span><button type="button" className="password-visibility" aria-label={showPassword ? "Hide password" : "Show password"} title={showPassword ? "Hide password" : "Show password"} disabled={!currentUser.password} onClick={() => setShowPassword((value) => !value)}>{showPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}</button></div>
           <code>{passwordText(currentUser.password, showPassword)}</code>
           {!currentUser.password && <small>No password on file. Use Reset password to set one.</small>}
         </div>

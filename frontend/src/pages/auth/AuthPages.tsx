@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { validEmail } from "../../services/authService";
 import { APP_NAME } from "../../data/models";
+import { PasswordInput } from "../../components/PasswordInput";
 type Errors = Record<string, string>;
 function PasswordField({
   id,
@@ -21,34 +22,19 @@ function PasswordField({
   autoComplete: string;
   placeholder?: string;
 }) {
-  const [visible, setVisible] = useState(false);
   return (
     <label className="field" htmlFor={id}>
       {label}
-      <span className="password-input">
-        <input
-          id={id}
-          type={visible ? "text" : "password"}
-          value={value}
-          placeholder={placeholder}
-          autoComplete={autoComplete}
-          onChange={(e) => onChange(e.target.value)}
-          aria-invalid={!!error}
-          aria-describedby={error ? id + "-error" : undefined}
-        />
-        <button
-          type="button"
-          className="icon-button"
-          onClick={() => setVisible((v) => !v)}
-          aria-label={
-            visible
-              ? "Hide " + label.toLowerCase()
-              : "Show " + label.toLowerCase()
-          }
-        >
-          {visible ? "Hide" : "Show"}
-        </button>
-      </span>
+      <PasswordInput
+        label={label}
+        id={id}
+        value={value}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        onChange={(e) => onChange(e.target.value)}
+        aria-invalid={!!error}
+        aria-describedby={error ? id + "-error" : undefined}
+      />
       {error && (
         <small id={id + "-error"} className="field-error">
           {error}
