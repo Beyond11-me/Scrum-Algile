@@ -83,6 +83,7 @@
 .teacher-field textarea { min-height:80px; resize:vertical; line-height:17px; }
 .teacher-field-row { display:grid; grid-template-columns:1fr; gap:16px; }
 .teacher-state-success { color:var(--success); }
+.teacher-state-auto-graded { color:#4F6FAE; }
 .teacher-state-warning,.teacher-status-review { color:var(--warning); }
 .teacher-state-failed { color:var(--danger); }
 .teacher-small-button { min-height:34px; padding:7px 11px; font-size:11px; border-radius:5px; }
@@ -145,6 +146,9 @@
 .teacher-list-detail-facts > div { display:flex; justify-content:space-between; gap:12px; min-height:36px; padding:8px 0; border-bottom:1px solid var(--border-subtle); font-size:11px; }
 .teacher-list-detail-facts dt { color:var(--muted); }
 .teacher-list-detail-facts dd { margin:0; color:var(--text); text-align:right; }
+.teacher-list-detail-facts dd.teacher-detail-score { font-weight:700; }
+.teacher-list-detail-facts dd.teacher-state-auto-graded { color:#4F6FAE; }
+.teacher-list-detail-facts dd.teacher-state-success { color:var(--success); }
 .teacher-list-detail-actions { display:flex; flex-direction:column; gap:8px; margin-top:16px; }
 .teacher-list-detail-actions .button { width:100%; justify-content:center; }
 .teacher-danger-button { border-color:var(--danger); color:var(--danger); }
@@ -634,3 +638,11 @@
   .teacher-review-history { margin-top:14px; }
   .teacher-add-problem-list,.teacher-manage-dialog { min-width:0; }
 }
+
+/* Difficulty and assignment status labels share colors in lists and details. */
+.teacher-library-page :is(td, dd).teacher-label-easy,
+.teacher-assignment-list-page :is(td, dd):is(.teacher-label-active, .teacher-label-open) { color: var(--success); }
+.teacher-library-page :is(td, dd).teacher-label-medium { color: #9a6700; }
+.teacher-library-page :is(td, dd).teacher-label-hard { color: #b54747; }
+.teacher-assignment-list-page :is(td, dd).teacher-label-scheduled { color: #4F6FAE; }
+.teacher-assignment-list-page :is(td, dd):is(.teacher-label-draft, .teacher-label-closed) { color: var(--muted); }

@@ -751,6 +751,11 @@ body:has(.compact-tables-page) { overflow: hidden; }
   :is(.compact-teacher-library, .compact-teacher-assignments, .compact-teacher-contests, .compact-teacher-classes, .compact-teacher-results) .teacher-table { width: 100%; min-width: 0; table-layout: fixed; }
   :is(.compact-teacher-library, .compact-teacher-assignments, .compact-teacher-contests, .compact-teacher-classes, .compact-teacher-results) .teacher-table > thead { position: sticky; top: 0; }
   :is(.compact-teacher-library, .compact-teacher-assignments, .compact-teacher-contests, .compact-teacher-classes, .compact-teacher-results) .teacher-table :is(th, td) { overflow-wrap: anywhere; }
+  .compact-teacher-results .teacher-results-table.teacher-activity-results-table { min-width: 800px; }
+  .compact-teacher-results .teacher-results-table.teacher-activity-results-table th:nth-child(5) { width: 110px; }
+  .compact-teacher-results .teacher-results-table td[data-label="STATUS"] { white-space: nowrap; overflow-wrap: normal; }
+  .compact-teacher-results .teacher-results-table :is(th:nth-child(3), th:nth-child(4), td[data-label="AUTO SCORE"], td[data-label="FINAL SCORE"]) { text-align: center; }
+  .compact-teacher-results .teacher-results-table td[data-label="FINAL SCORE"] { font-weight: 700; }
   :is(.compact-teacher-library, .compact-teacher-assignments, .compact-teacher-contests, .compact-teacher-classes, .compact-teacher-results) .teacher-list-footer { flex: none; margin: 0; padding: 10px 12px; border-top: 1px solid var(--border); background: var(--surface); }
   :is(.compact-teacher-library, .compact-teacher-assignments, .compact-teacher-contests, .compact-teacher-classes, .compact-teacher-results) .teacher-list-detail-panel { position: static; align-self: stretch; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px; }
 }
@@ -853,3 +858,25 @@ body:has(.compact-tables-page) { overflow: hidden; }
 .teacher-dataset-heading .teacher-dataset-file-field { height: 34px; width: 128px; box-sizing: border-box; border-radius: 5px; }
 .teacher-dataset-heading .teacher-dataset-file-field .teacher-dataset-filename { width: 0; flex: 1; min-width: 0; height: 100%; min-height: 0; padding: 7px 8px; box-sizing: border-box; font-size: 11px; line-height: 18px; }
 .teacher-dataset-heading .teacher-dataset-file-extension { flex-shrink: 0; padding-right: 8px; font-size: 11px; }
+
+/* Align problem filters and actions with the list and details panel. */
+.compact-teacher-library .teacher-problem-filter-fields,
+.compact-teacher-library .teacher-problem-filter-actions { display: grid; gap: 12px; align-items: end; min-width: 0; }
+.compact-teacher-library .teacher-problem-filter-fields { grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, 1fr)); }
+.compact-teacher-library .teacher-problem-filter-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.compact-teacher-library .teacher-problem-filter-actions .button { width: 100%; white-space: nowrap; }
+@media (min-width: 801px) {
+  .compact-teacher-library .teacher-problem-filters:has(.teacher-archive-toggle) { grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); gap: 24px; }
+  .compact-teacher-library .teacher-library-table:not(.teacher-assignment-list-table) th:nth-child(1) { width: 10%; }
+  .compact-teacher-library .teacher-library-table:not(.teacher-assignment-list-table) th:nth-child(2) { width: 40%; }
+  .compact-teacher-library .teacher-library-table:not(.teacher-assignment-list-table) th:nth-child(3) { width: 20%; }
+  .compact-teacher-library .teacher-library-table:not(.teacher-assignment-list-table) th:nth-child(4) { width: 30%; }
+}
+@media (min-width: 801px) and (max-width: 1100px) {
+  .compact-teacher-library .teacher-problem-filters:has(.teacher-archive-toggle) { grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; }
+}
+@media (max-width: 800px) {
+  .compact-teacher-library .teacher-problem-filters { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .compact-teacher-library .teacher-problem-filter-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .compact-teacher-library .teacher-problem-filter-fields > :first-child { grid-column: 1 / -1; }
+}
