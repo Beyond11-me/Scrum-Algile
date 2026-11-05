@@ -108,6 +108,11 @@ export function AiChatPanel({ problem, code, onClose }: AiChatPanelProps) {
     if (!input.trim() || isLoading) return;
     
     const userMsg = input.trim();
+    const words = userMsg.split(/\s+/).filter(Boolean);
+    if (words.length > 120 || userMsg.length > 1500) {
+      setChatError("Ask AI accepts up to 120 words (1,500 characters) per question.");
+      return;
+    }
     setInput("");
     
     const newMessages = [...messages, { role: "user", content: userMsg } as ChatMessage];
@@ -215,7 +220,7 @@ export function AiChatPanel({ problem, code, onClose }: AiChatPanelProps) {
               handleSend();
             }
           }}
-          placeholder="Ask a question about this problem..."
+          placeholder="Ask a question (up to 120 words)..."
           disabled={isLoading || showHistory}
         />
         <button 

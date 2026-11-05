@@ -1,0 +1,69 @@
+/* Quiet spacing and surface polish on top of the shared Dify tokens. */
+
+.page {
+  padding: 36px 0 64px;
+}
+
+.teacher-page,
+.admin-page {
+  padding-top: 36px;
+  padding-bottom: 64px;
+}
+
+.teacher-page-intro,
+.admin-page-intro {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+}
+
+.teacher-list-detail-main,
+.admin-primary,
+.teacher-builder-main,
+.teacher-list-detail-panel,
+.admin-side,
+.teacher-builder-sidebar,
+.teacher-class-details {
+  border-color: var(--border-subtle);
+}
+
+.teacher-table th,
+.admin-table th {
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.button {
+  font-weight: 500;
+}
+
+.button.primary {
+  border-color: transparent;
+}
+
+.role-header {
+  background: var(--surface);
+}
+
+.global-header .brand-name,
+.role-header .brand-name {
+  letter-spacing: -0.02em;
+}
+
+.field,
+.teacher-field,
+.admin-field {
+  gap: 8px;
+}
+
+.empty,
+.teacher-empty,
+.admin-empty {
+  padding: 40px 24px;
+  color: var(--muted);
+}
+
+.status,
+.badge {
+  letter-spacing: 0.01em;
+}

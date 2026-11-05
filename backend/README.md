@@ -83,7 +83,16 @@ cp .env.example .env
 Open the `.env` file and configure your environment variables:
 
 - **`DATABASE_URL`**: Ensure the connection string matches your SQL Server setup. Replace `@localhost` with your actual SQL Server instance name (e.g., `SQLEXPRESS` or your computer name, like `@DESKTOP-ABC123`). If you are using SQL Authentication instead of Windows Authentication, add your username and password, for example: `mssql+pyodbc://username:password@localhost/SQLUIT?driver=...`
-- **`GEMINI_API_KEY`**: Provide your actual Gemini API key for AI features to work.
+- **`GEMINI_API_KEY`**: Provide your actual Gemini API key for AI features to work. Keep it in `.env`; do not commit it.
+
+Ask AI is limited per student so one account cannot exhaust the shared model key:
+
+- 15 questions and about 12,000 tokens per student per day
+- 120 words or 1,500 characters per question
+- 8 seconds between questions
+- Only the last 6 messages from the past 30 minutes are sent to the model
+
+Limits live in `app/services/ai_limits.py`. After pulling schema changes, run `python -m migrations.run_all` so login columns such as `first_login_pending` exist.
 
 _(Tip: To find your SQL Server instance name, you can run `SELECT @@SERVERNAME;` in SQL Server Management Studio.)_
 

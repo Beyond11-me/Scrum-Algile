@@ -266,7 +266,7 @@ export function ManualReviewPage() {
     <section className="teacher-page teacher-review-page">
       <TeacherPageIntro
         title="Manual review"
-        context={`${submission.student} / ${submission.problem} / ${submission.attempts} / Submission #${submission.id.substring(0, 8)}`}
+        context={`${submission.student} / ${submission.problem} / ${submission.attempts}`}
       >
         <Link className="button" to="/teacher/results">Back to results</Link>
         <button className="button primary" type="button" onClick={saveReview} disabled={isSaving}>

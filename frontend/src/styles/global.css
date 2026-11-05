@@ -5,7 +5,7 @@ body {
   margin: 0;
   background: var(--canvas);
   color: var(--text-primary);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 13px;
   line-height: 20px;
   font-weight: 400;
@@ -78,12 +78,21 @@ p {
 h1 {
   font-size: 24px;
   line-height: 1.4;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.02em;
+  font-weight: 600;
 }
 h2 {
   font-size: 18px;
   line-height: 1.45;
-  letter-spacing: -0.35px;
+  letter-spacing: -0.015em;
+  font-weight: 600;
+}
+code,
+kbd,
+pre,
+.cm-editor,
+.cm-scroller {
+  font-family: var(--font-mono);
 }
 h3 {
   font-size: 14px;

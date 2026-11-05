@@ -27,7 +27,7 @@ Values come from `frontend/src/styles/tokens.css`. Use the tokens, not hex codes
 
 ## Type
 
-JetBrains Mono everywhere, through `--font-ui` and `--font-mono`.
+Inter for product copy (`--font-sans`, `--font-ui`). JetBrains Mono for SQL, keys, and editor text (`--font-mono`).
 
 | Level | Size | Weight |
 |---|---|---|

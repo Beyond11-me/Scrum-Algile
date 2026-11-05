@@ -99,7 +99,7 @@
   display: grid;
   grid-template-columns: 600px minmax(0, 1fr);
   background: var(--surface);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
 }
 .auth-brand-panel {
   display: flex;
@@ -142,7 +142,7 @@
 .auth-form-wrap .auth-switch { margin:0; }
 .auth-card { padding:0; border:0; border-radius:0; background:transparent; }
 .auth-card .field { margin:0; }
-.auth-card .button { font-family:var(--font-mono); }
+.auth-card .button { font-family:var(--font-sans); }
 .auth-card > .button.full { margin-top:12px; }
 .auth-card > .auth-note { display:none; }
 .auth-card > .auth-heading { display:none; }
@@ -189,8 +189,8 @@
 .auth-form-wrap .button:not(.primary):hover { background:var(--subtle); }
 .auth-form-wrap .form-message[role="alert"] { color:var(--danger); }
 .auth-form-wrap .field-error { color:var(--danger); }
-.auth-form-wrap .auth-note { font-family:var(--font-mono); }
-.auth-form-wrap .auth-switch { font-family:var(--font-mono); }
+.auth-form-wrap .auth-note { font-family:var(--font-sans); }
+.auth-form-wrap .auth-switch { font-family:var(--font-sans); }
 .auth-form-wrap .forgot-link { color:var(--accent); }
 .auth-form-wrap .forgot-link:hover { color:var(--accent); }
 .auth-form-wrap .button.primary { background:var(--accent); color:var(--on-accent); }
@@ -211,7 +211,7 @@
 .auth-form-wrap .auth-heading p { margin:0; }
 .auth-form-wrap .auth-heading h1 { margin:0; }
 .auth-form-wrap .auth-form-panel { width:100%; }
-.auth-form-wrap { font-family:var(--font-mono); }
+.auth-form-wrap { font-family:var(--font-sans); }
 .auth-form-wrap .button:disabled { opacity:.55; }
 .auth-form-wrap .password-requirements { color:var(--muted); }
 .auth-form-wrap .field-error { font-size:11px; }
@@ -299,7 +299,7 @@
 .auth-form-wrap .auth-heading ~ form > .password-requirements { line-height:17px; }
 .auth-form-wrap .auth-heading ~ form > .password-requirements { font-size:11px; }
 .auth-form-wrap .auth-heading ~ form > .password-requirements { color:var(--muted); }
-.auth-form-wrap .auth-heading ~ form > .password-requirements { font-family:var(--font-mono); }
+.auth-form-wrap .auth-heading ~ form > .password-requirements { font-family:var(--font-sans); }
 .auth-form-wrap .auth-heading ~ form > .field-error { font-size:11px; }
 .auth-form-wrap .auth-heading ~ form > .field-error { color:var(--danger); }
 .auth-form-wrap .auth-heading ~ form > .field-error { line-height:17px; }
@@ -323,7 +323,7 @@
 .auth-form-wrap .auth-heading ~ form > .auth-switch { padding:0; }
 .auth-form-wrap .auth-heading ~ form > .auth-switch { border:0; }
 .auth-form-wrap .auth-heading ~ form > .auth-switch { background:transparent; }
-.auth-form-wrap .auth-heading ~ form > .auth-switch { font-family:var(--font-mono); }
+.auth-form-wrap .auth-heading ~ form > .auth-switch { font-family:var(--font-sans); }
 .auth-form-wrap .auth-heading ~ form > .auth-switch { font-weight:400; }
 .auth-form-wrap .auth-heading ~ form > .auth-switch { color:var(--muted); }
 .auth-form-wrap .auth-heading ~ form > .auth-switch { font-size:13px; }
