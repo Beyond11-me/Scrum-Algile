@@ -1,3 +1,4 @@
+import { SelectMenu } from "../../components/SelectMenu";
 import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ChevronRight, Search } from "lucide-react";
@@ -227,9 +228,9 @@ export function ProblemListPage() {
                 <button type="button" aria-pressed={view === "list"} onClick={() => update({ view: "list" })}>List</button>
               </div>
               <label htmlFor="practice-sort">Sort</label>
-              <select id="practice-sort" value={sort} onChange={(event) => update({ sort: event.target.value })}>
+              <SelectMenu id="practice-sort" value={sort} onChange={(event) => update({ sort: event.target.value })}>
                 {SORTS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-              </select>
+              </SelectMenu>
             </div>
           </div>
 

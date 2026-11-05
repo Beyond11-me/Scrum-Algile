@@ -1,3 +1,4 @@
+import { SelectMenu } from "../../components/SelectMenu";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ErrorState, Loading } from "../../components/ui";
@@ -128,7 +129,7 @@ export function ProblemLibraryPage() {
               />
             </TeacherField>
             <TeacherField label="DIFFICULTY">
-              <select
+              <SelectMenu
                 value={difficulty}
                 onChange={(event) => setDifficulty(event.target.value)}
               >
@@ -136,25 +137,25 @@ export function ProblemLibraryPage() {
                 <option>Easy</option>
                 <option>Medium</option>
                 <option>Hard</option>
-              </select>
+              </SelectMenu>
             </TeacherField>
             <TeacherField label="TOPIC">
-              <select value={topic} onChange={(event) => setTopic(event.target.value)}>
+              <SelectMenu value={topic} onChange={(event) => setTopic(event.target.value)}>
                 <option>All topics</option>
                 {topicOptions.map((item) => (
                   <option key={item}>{item}</option>
                 ))}
-              </select>
+              </SelectMenu>
             </TeacherField>
             <TeacherField label="VISIBILITY">
-              <select
+              <SelectMenu
                 value={visibility}
                 onChange={(event) => setVisibility(event.target.value)}
               >
                 <option>All</option>
                 <option>Public</option>
                 <option>Private</option>
-              </select>
+              </SelectMenu>
             </TeacherField>
             <button className="button teacher-archive-toggle" type="button" onClick={() => setIncludeArchived((value) => !value)}>
               {includeArchived ? "Hide archived" : "Show archived"}
@@ -402,7 +403,7 @@ export function AssignmentsListPage() {
               />
             </TeacherField>
             <TeacherField label="STATUS">
-              <select
+              <SelectMenu
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
@@ -411,7 +412,7 @@ export function AssignmentsListPage() {
                 <option>Draft</option>
                 <option>Scheduled</option>
                 <option>Closed</option>
-              </select>
+              </SelectMenu>
             </TeacherField>
             <InstructorOnlyButton
               className="button primary teacher-problem-new"

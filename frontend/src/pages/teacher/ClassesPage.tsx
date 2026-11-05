@@ -1,3 +1,4 @@
+import { SelectMenu } from "../../components/SelectMenu";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Dialog, ErrorState, Loading } from "../../components/ui";
@@ -207,10 +208,10 @@ export function ClassesPage() {
           />
         </TeacherField>
         <TeacherField label="ACADEMIC TERM">
-          <select value={term} onChange={(event) => setTerm(event.target.value)}>
+          <SelectMenu value={term} onChange={(event) => setTerm(event.target.value)}>
             <option>All terms</option>
             {termOptions.map((termOption) => <option key={termOption}>{termOption}</option>)}
-          </select>
+          </SelectMenu>
         </TeacherField>
       </div>
 

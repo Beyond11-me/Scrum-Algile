@@ -1,3 +1,4 @@
+import { SelectMenu } from "../../components/SelectMenu";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { studentApi } from "../../services/studentApi";
@@ -55,16 +56,16 @@ export function SubmissionsPage() {
         </label>
         <label className="field">
           Source
-          <select value={source} onChange={(e) => setSource(e.target.value)}>
+          <SelectMenu value={source} onChange={(e) => setSource(e.target.value)}>
             <option value="">All sources</option>
             {["Practice", "Assignments", "Contests"].map((v) => (
               <option key={v}>{v}</option>
             ))}
-          </select>
+          </SelectMenu>
         </label>
         <label className="field">
           Result
-          <select value={result} onChange={(e) => setResult(e.target.value)}>
+          <SelectMenu value={result} onChange={(e) => setResult(e.target.value)}>
             <option value="">All results</option>
             {[
               "Accepted",
@@ -75,7 +76,7 @@ export function SubmissionsPage() {
             ].map((v) => (
               <option key={v}>{v}</option>
             ))}
-          </select>
+          </SelectMenu>
         </label>
       </div>
       <div className="submissions-results-frame">

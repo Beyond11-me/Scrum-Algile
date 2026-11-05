@@ -1,3 +1,4 @@
+import { SelectMenu } from "../../components/SelectMenu";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Dialog, Loading } from "../../components/ui";
@@ -66,13 +67,13 @@ function AssignmentPreview({
         {draft.classIds.length > 1 && (
           <label>
             View as class
-            <select value={classId} onChange={(event) => setSelectedClassId(event.target.value)}>
+            <SelectMenu value={classId} onChange={(event) => setSelectedClassId(event.target.value)}>
               {draft.classIds.map((id) => (
                 <option value={id} key={id}>
                   {classes.find((item) => item.id === id)?.course || id}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           </label>
         )}
       </div>
@@ -380,7 +381,7 @@ export function AssignmentBuilderPage() {
               />
             </TeacherField>
             <TeacherField label="CLASS">
-              <select
+              <SelectMenu
                 value={hasMultipleClasses ? MULTIPLE_CLASSES : draft.classIds[0] || ""}
                 disabled={classesLoading}
                 onChange={(event) =>
@@ -404,7 +405,7 @@ export function AssignmentBuilderPage() {
                     {classId}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
               {classesError && (
                 <small className="teacher-state-failed" role="alert">
                   {classesError}
