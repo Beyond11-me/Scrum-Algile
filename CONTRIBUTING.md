@@ -14,17 +14,17 @@ Thanks for contributing! This guide describes how Scrum Team **AIgile** works on
 | --- | --- |
 | `main` | Stable code; every change arrives through a reviewed Pull Request |
 | `production` | Deployed to Azure; only updated from `main` |
-| `feature/<short-name>` | New features, branched from `main` |
+| `feat/<short-name>` | New features, branched from `main` |
 | `fix/<short-name>` | Bug fixes, branched from `main` |
 | `hotfix/<short-name>` | Urgent production fixes |
 | `docs/<short-name>`, `chore/<short-name>` | Documentation and maintenance work |
 
-Use lowercase and hyphens, and keep branches short-lived. Example: `feature/rbac-guard`, `fix/query-timeout`.
+Use lowercase and hyphens, include the story ID when there is one, and keep branches short-lived. Example: `feat/us-1.2-rbac-guard`, `fix/query-timeout`.
 
 ```bash
 git switch main
 git pull
-git switch -c feature/rbac-guard
+git switch -c feat/us-1.2-rbac-guard
 ```
 
 ## 3. Commit Messages
@@ -101,8 +101,8 @@ If you change grading logic in `backend/app/services/sandbox.py`, add test cases
 ## 5. Pull Requests
 
 1. Push your branch and open a Pull Request into `main`.
-2. Use a Conventional Commit style title, e.g. `feat(admin): add class management page`.
-3. In the description, link the Notion backlog item and explain what changed and how you tested it. Add screenshots for UI changes.
+2. Use a Conventional Commit style title and add the story ID when there is one, e.g. `feat(admin): add class management page [US-2.1]`.
+3. Fill in the Pull Request template: link the Notion backlog item and explain what changed and how you tested it. Add screenshots for UI changes.
 4. All CI checks must pass: `Frontend checks`, `Backend checks`, and `Docker and SQL Server integration`.
 5. At least **one other team member** must approve. **Self-merging without review is not allowed.**
 6. Resolve every required review comment before merging, and delete the branch after merge.
@@ -122,6 +122,8 @@ AI tools (GitHub Copilot, ChatGPT, Claude, ...) are welcome, but:
 
 - You are fully accountable for any code you commit, including AI-generated code. Understand and review it before opening a PR.
 - Never paste production credentials, private keys or real user data into AI prompts.
+
+To give every tool the same context, point it at [AGENTS.md](AGENTS.md). Use [start-story](.ai/prompts/start-story.md) to agree on a plan before coding, and [ship-story](.ai/prompts/ship-story.md) to check your work before opening a PR.
 
 ## 7. Definition of Done
 
