@@ -1,6 +1,7 @@
 import sys
 import os
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -12,6 +13,7 @@ from app.services.rbac import seed_rbac_catalogue
 from app.routers.admin_classes import create_class, update_class, ClassCreatePayload, ClassUpdatePayload
 from app.routers.admin_users import create_admin_user, AdminUserCreate
 from app.routers.admin_overview import get_overview_stats
+from app.core.security import verify_password
 
 class TestAdminFeatures(unittest.TestCase):
     @classmethod
@@ -140,11 +142,20 @@ class TestAdminFeatures(unittest.TestCase):
             name="New Test Student",
             email=test_email,
             role="Student",
-            password="securepassword123"
         )
-        created = create_admin_user(user_payload, self.db, self.admin)
+        with patch("app.routers.admin_users.smtp_configured", return_value=True), patch(
+            "app.routers.admin_users.send_initial_password"
+        ) as send_mail:
+            created = create_admin_user(user_payload, self.db, self.admin)
         self.assertEqual(created.email, test_email)
         self.assertEqual(created.role, "Student")
+        self.assertEqual(created.email_delivery, "sent")
+        send_mail.assert_called_once()
+        sent_email, temporary_password = send_mail.call_args.args
+        self.assertEqual(sent_email, test_email)
+        stored = self.db.query(User).filter(User.email == test_email).one()
+        self.assertTrue(verify_password(temporary_password, stored.hashed_password))
+        self.assertTrue(stored.first_login_pending)
 
         # Clean up
         self.db.query(User).filter(User.email == test_email).delete()
