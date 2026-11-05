@@ -30,9 +30,6 @@ export function SubmissionDetails({
   const content = (
     <>
       <div className="submission-detail-content">
-        <p className="tiny muted submission-detail-id">
-          #{submission.id} · Read-only
-        </p>
         <h1>
           <Link className="title-link" to={"/workspace/" + p.id}>{p.number}. {p.title}</Link>
         </h1>

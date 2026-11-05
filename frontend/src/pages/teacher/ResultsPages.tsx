@@ -3,6 +3,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import { EditorView } from "@codemirror/view";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Dialog, ErrorState, Loading } from "../../components/ui";
+import { SelectMenu } from "../../components/SelectMenu";
 import { TeacherField, TeacherPageIntro, TeacherSectionTitle } from "./TeacherPageParts";
 import { teacherService, type TeacherSubmissionItem } from "../../services/teacherService";
 import { useLoad } from "../../components/useLoad";
@@ -130,11 +131,11 @@ export function ResultsDashboardPage() {
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search student or problem…" />
         </TeacherField>
         <TeacherField label="REVIEW STATUS">
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <SelectMenu value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option>All</option>
             <option>Auto-graded</option>
             <option>Reviewed</option>
-          </select>
+          </SelectMenu>
         </TeacherField>
       </div>
 

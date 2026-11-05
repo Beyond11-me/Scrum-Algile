@@ -1,3 +1,4 @@
+import { SelectMenu } from "../../components/SelectMenu";
 import CodeMirror from "@uiw/react-codemirror";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -650,7 +651,7 @@ export function ProblemEditorPage() {
           </div>
           <div className="teacher-field-row">
             <TeacherField label="DIFFICULTY">
-              <select
+              <SelectMenu
                 value={problem.difficulty}
                 onChange={(event) =>
                   update("difficulty", event.target.value as TeacherProblem["difficulty"])
@@ -659,7 +660,7 @@ export function ProblemEditorPage() {
                 <option>Easy</option>
                 <option>Medium</option>
                 <option>Hard</option>
-              </select>
+              </SelectMenu>
             </TeacherField>
           </div>
           </section>
@@ -749,13 +750,13 @@ export function ProblemEditorPage() {
           )}
           {selectedId !== "new" && (
           <TeacherField label="VISIBILITY">
-            <select
+            <SelectMenu
               value={problem.visibility}
               onChange={(event) => update("visibility", event.target.value as TeacherProblem["visibility"])}
             >
               <option>Private</option>
               <option>Public</option>
-            </select>
+            </SelectMenu>
             <small className="teacher-visibility-help">
               {problem.visibility === "Private"
                 ? "Private problems are available to students through assigned work. Public problems appear in Practice."
@@ -916,12 +917,12 @@ export function ProblemEditorPage() {
           <TeacherSectionTitle title="Database & validation" />
           <section className="teacher-validation-section teacher-validation-overview">
             <TeacherField label="SQL DIALECT">
-              <select
+              <SelectMenu
                 value={problem.database}
                 onChange={(event) => update("database", event.target.value)}
               >
                 <option>SQL Server</option>
-              </select>
+              </SelectMenu>
             </TeacherField>
             <p className="tiny muted">Validation and student execution currently use SQL Server.</p>
           </section>
@@ -951,11 +952,11 @@ export function ProblemEditorPage() {
             </div>
             <div className="teacher-dataset-picker">
               <label htmlFor="teacher-dataset-select">Dataset</label>
-              <select id="teacher-dataset-select" aria-label="Select test dataset" value={activeDataset} onChange={(event) => setActiveDataset(Number(event.target.value))}>
+              <SelectMenu id="teacher-dataset-select" aria-label="Select test dataset" value={activeDataset} onChange={(event) => setActiveDataset(Number(event.target.value))}>
                 {(problem.testCases || [{seedData: problem.seedData, isHidden: false}]).map((_, index) => (
                   <option key={index} value={index}>Dataset {index + 1} / {datasetNames[index] || `seed_${index + 1}.sql`}</option>
                 ))}
-              </select>
+              </SelectMenu>
               <button
                 type="button"
                 className={"button teacher-small-button teacher-dataset-hidden-toggle" + ((problem.testCases || [{seedData: problem.seedData, isHidden: false}])[activeDataset]?.isHidden ? " is-active" : "")}

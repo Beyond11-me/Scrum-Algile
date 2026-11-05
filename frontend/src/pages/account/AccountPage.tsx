@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Dialog } from "../../components/ui";
+import { PasswordChecklist, PasswordInput } from "../../components/PasswordInput";
+import { passwordRequirements } from "../../utils/passwordRequirements";
 import { useAuth } from "../../context/AuthContext";
 import { ApiError } from "../../services/apiClient";
 import { authService } from "../../services/authService";
@@ -21,7 +23,6 @@ export function AccountPage() {
   const [name, setName] = useState(session?.name ?? "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState("");
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
@@ -39,12 +40,21 @@ export function AccountPage() {
   const lockedLabel = lockedUntil ? new Date(lockedUntil).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "";
   const nameChanged = collapseName(name) !== collapseName(session?.name ?? "");
 
+  function clearPasswordError(field: "currentPassword" | "newPassword") {
+    setErrors((previous) => {
+      if (!previous[field]) return previous;
+      const next = { ...previous };
+      delete next[field];
+      return next;
+    });
+  }
+
   function validate() {
     const next: Record<string, string> = {};
     const cleanName = collapseName(name);
     if (nameChanged && !PERSON_NAME.test(cleanName)) next.name = "Use 2–100 letters and spaces, with no accents or digits.";
     if (newPassword) {
-      if (newPassword.length < 8 || newPassword.length > 64 || !/[a-z]/.test(newPassword) || !/[A-Z]/.test(newPassword) || !/\d/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
+      if (!passwordRequirements(newPassword, "self").every((requirement) => requirement.met)) {
         next.newPassword = "Use 8–64 characters with an uppercase letter, a lowercase letter, a digit, and a symbol.";
       }
       if (!currentPassword) next.currentPassword = "Enter your current password.";
@@ -108,10 +118,9 @@ export function AccountPage() {
       </section>
       <section className="self-account-section">
         <h2>Password</h2>
-        <label className="admin-field"><span>CURRENT PASSWORD</span><input type={showPassword ? "text" : "password"} value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" disabled={locked || busy} aria-invalid={!!errors.currentPassword} />{errors.currentPassword && <small className="field-error">{errors.currentPassword}</small>}</label>
-        <label className="admin-field"><span>NEW PASSWORD</span><input type={showPassword ? "text" : "password"} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} maxLength={64} autoComplete="new-password" placeholder="Leave blank to keep the current password" disabled={locked || busy} aria-invalid={!!errors.newPassword} />{errors.newPassword && <small className="field-error">{errors.newPassword}</small>}</label>
-        <p className="self-account-hint">Use 8–64 characters with an uppercase letter, a lowercase letter, a digit, and a symbol.</p>
-        <button type="button" className="text-button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide passwords" : "Show passwords"}</button>
+        <label className="admin-field"><span>CURRENT PASSWORD</span><PasswordInput label="current password" value={currentPassword} onChange={(event) => { setCurrentPassword(event.target.value); clearPasswordError("currentPassword"); }} autoComplete="current-password" disabled={locked || busy} aria-invalid={!!errors.currentPassword} aria-describedby={errors.currentPassword ? "current-password-error" : undefined} />{errors.currentPassword && <small id="current-password-error" className="field-error">{errors.currentPassword}</small>}</label>
+        <label className="admin-field"><span>NEW PASSWORD</span><PasswordInput label="new password" value={newPassword} onChange={(event) => { setNewPassword(event.target.value); clearPasswordError("newPassword"); }} maxLength={64} autoComplete="new-password" placeholder="Leave blank to keep the current password" disabled={locked || busy} aria-invalid={!!errors.newPassword} aria-describedby={`new-password-requirements${errors.newPassword ? " new-password-error" : ""}`} />{errors.newPassword && <small id="new-password-error" className="field-error">{errors.newPassword}</small>}</label>
+        <PasswordChecklist id="new-password-requirements" password={newPassword} policy="self" />
       </section>
       {errors.form && <p className="admin-warning" role="alert">{errors.form}</p>}
       {notice && <p className="admin-notice" role="status">{notice}</p>}

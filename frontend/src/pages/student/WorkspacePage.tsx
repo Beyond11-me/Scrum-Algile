@@ -293,7 +293,7 @@ function Workspace({ problem }: { problem: Problem }) {
     };
   }, [expanded]);
   async function run(kind: "run" | "submit") {
-    if (busy) return;
+    if (busy || (kind === "submit" && !code.trim())) return;
     setBusy(kind);
     setExpanded(false);
     setNotice("");
@@ -766,8 +766,8 @@ function Workspace({ problem }: { problem: Problem }) {
                   <button
                     className="editor-submit"
                     type="button"
-                    disabled={!!busy || contestClosed}
-                    title={contestClosed ? "Contest submissions are closed" : undefined}
+                    disabled={!!busy || contestClosed || !code.trim()}
+                    title={contestClosed ? "Contest submissions are closed" : !code.trim() ? "Write a SQL query before submitting" : undefined}
                     onClick={() => void run("submit")}
                   >
                     {busy === "submit"
