@@ -298,7 +298,6 @@ body:has(.compact-tables-page) { overflow: hidden; }
 .submission-inline-heading h2 { margin: 0; font-size: 16px; line-height: 24px; }
 .submission-inline-panel .submission-detail-content { padding: 16px; overscroll-behavior: contain; overflow-wrap: anywhere; }
 .submission-inline-panel .submission-detail-content h1 { font-size: 16px; line-height: 24px; margin-bottom: 10px; }
-.submission-inline-panel .submission-detail-id { font-size: 11px; }
 .submission-inline-panel .submission-evaluation { margin: 16px 0; }
 .submission-inline-panel .submission-verdict { align-items: flex-start; flex-direction: column; gap: 8px; padding: 12px; }
 .submission-inline-panel .submission-score-grid { gap: 8px; }

@@ -110,10 +110,14 @@
 .teacher-builder-sidebar .teacher-field { gap:4px; margin-bottom:9px; }
 .teacher-builder-sidebar .teacher-field input { min-height:40px; padding:8px 10px; }
 .teacher-builder-sidebar .teacher-schedule-section > .teacher-section-title { min-height:24px; margin-bottom:8px; }
-.teacher-builder-sidebar .teacher-student-options { padding:12px 0; }
-.teacher-builder-sidebar .teacher-student-options > .teacher-section-title { min-height:24px; margin-bottom:8px; }
-.teacher-builder-sidebar .teacher-option-row { min-height:36px; gap:8px; }
-.teacher-builder-sidebar .teacher-option-row b,.teacher-builder-sidebar .teacher-option-row small { font-size:11px; line-height:16px; }
+.teacher-builder-sidebar .teacher-student-options { padding:16px 0; }
+.teacher-builder-sidebar .teacher-student-options > .teacher-section-title { min-height:24px; margin-bottom:12px; }
+.teacher-builder-sidebar .teacher-option-list { overflow:hidden; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface); }
+.teacher-builder-sidebar .teacher-option-row { min-height:64px; gap:12px; padding:12px; }
+.teacher-builder-sidebar .teacher-option-row + .teacher-option-row { border-top:1px solid var(--border-subtle); }
+.teacher-builder-sidebar .teacher-option-row > span { gap:4px; }
+.teacher-builder-sidebar .teacher-option-row b { color:var(--text); font-size:12px; font-weight:600; line-height:18px; }
+.teacher-builder-sidebar .teacher-option-row small { color:var(--muted); font-size:11px; line-height:16px; }
 .teacher-builder-sidebar .teacher-builder-save-state { margin-top:6px; }
 .teacher-builder-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border-subtle); }
 .teacher-builder-actions > .button { min-width:0; min-height:36px; padding:8px 10px; font-size:11px; }

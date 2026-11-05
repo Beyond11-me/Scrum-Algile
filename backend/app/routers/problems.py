@@ -440,7 +440,10 @@ def submit_query(problem_id: str, request: QueryRequest, db: Session = Depends(g
         source, context = require_student_query_access(db, current_user, p, source, context)
     elif current_user.role not in ("instructor", "admin"):
         raise HTTPException(status_code=403, detail="You don't have permission to submit this problem.")
-        
+
+    if not request.query.strip():
+        raise HTTPException(status_code=400, detail="Write a SQL query before submitting.")
+
     max_score = 100
     result = run_sandbox(db, p, request.query, is_submit=True)
     

@@ -1,4 +1,5 @@
 import { SelectMenu } from "../../components/SelectMenu";
+import { DateTimePicker } from "../../components/DateTimePicker";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Dialog, Loading } from "../../components/ui";
@@ -533,58 +534,53 @@ export function AssignmentBuilderPage() {
         <aside className="teacher-builder-sidebar">
           <div className="teacher-schedule-section">
             <TeacherSectionTitle title="Schedule" />
-            <TeacherField label="OPENS">
-              <input
-                type="datetime-local"
-                value={draft.opens}
-                onChange={(event) => update("opens", event.target.value)}
-              />
-            </TeacherField>
-            <TeacherField label="DUE DATE">
-              <input
-                type="datetime-local"
-                value={draft.closes}
-                onChange={(event) => update("closes", event.target.value)}
-              />
-            </TeacherField>
+            <div className="teacher-field"><span>OPENS</span>
+              <DateTimePicker label="Opens" value={draft.opens} onChange={(value) => update("opens", value)} />
+            </div>
+            <div className="teacher-field"><span>DUE DATE</span>
+              <DateTimePicker label="Due date" value={draft.closes} onChange={(value) => update("closes", value)} />
+            </div>
           </div>
           <div className="teacher-student-options">
             <TeacherSectionTitle title="Student options" />
-            {(
-              [
-                ["hints", "Hints", "Students can open hints while solving"],
-                ["comments", "Comments", "Students can comment on each problem"],
+            <div className="teacher-option-list">
+              {(
                 [
-                  "aiAllowed",
-                  "AI assistance",
-                  draft.studentOptions.aiAllowed
-                    ? "Students can use AI assistance while solving"
-                    : "AI assistance is not allowed",
-                ],
-              ] as const
-            ).map(([key, label, help]) => (
-              <div className="teacher-option-row" key={key}>
-                <span>
-                  <b>{label}</b>
-                  <small>{help}</small>
-                </span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-label={key === "aiAllowed" ? "Allow AI assistance" : label}
-                  aria-checked={draft.studentOptions[key]}
-                  className={`teacher-toggle${draft.studentOptions[key] ? " is-on" : ""}`}
-                  onClick={() =>
-                    update("studentOptions", {
-                      ...draft.studentOptions,
-                      [key]: !draft.studentOptions[key],
-                    })
-                  }
-                >
-                  <span />
-                </button>
-              </div>
-            ))}
+                  ["hints", "Hints", "Students can open hints while solving"],
+                  ["comments", "Comments", "Students can comment on each problem"],
+                  [
+                    "aiAllowed",
+                    "AI assistance",
+                    draft.studentOptions.aiAllowed
+                      ? "Students can use AI assistance while solving"
+                      : "AI assistance is not allowed",
+                  ],
+                ] as const
+              ).map(([key, label, help]) => (
+                <div className="teacher-option-row" key={key}>
+                  <span>
+                    <b id={`student-option-${key}`}>{label}</b>
+                    <small id={`student-option-${key}-description`}>{help}</small>
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-labelledby={`student-option-${key}`}
+                    aria-describedby={`student-option-${key}-description`}
+                    aria-checked={draft.studentOptions[key]}
+                    className={`teacher-toggle${draft.studentOptions[key] ? " is-on" : ""}`}
+                    onClick={() =>
+                      update("studentOptions", {
+                        ...draft.studentOptions,
+                        [key]: !draft.studentOptions[key],
+                      })
+                    }
+                  >
+                    <span />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
           {alertText && (
             <p className="teacher-form-message" role="status">
