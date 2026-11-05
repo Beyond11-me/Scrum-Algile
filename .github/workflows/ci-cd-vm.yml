@@ -70,8 +70,8 @@ jobs:
         run: |
           set -euo pipefail
           echo "=== 1. Di chuyển vào thư mục dự án ==="
-          git config --global --add safe.directory /home/Scrum-Axon-Algile || true
-          cd /home/Scrum-Axon-Algile
+          git config --global --add safe.directory /home/isql-aigile/Scrum-Axon-Algile || true
+          cd /home/isql-aigile/Scrum-Axon-Algile
 
           echo "=== 2. Cập nhật mã nguồn mới nhất từ main ==="
           git fetch origin main
@@ -79,7 +79,7 @@ jobs:
 
           echo "=== 3. Kiểm tra file cấu hình .env ==="
           if [ ! -f .env ]; then
-            echo "LỖI: Không tìm thấy file .env tại /home/Scrum-Axon-Algile. Hãy đảm bảo file .env đã tồn tại trên VM."
+            echo "LỖI: Không tìm thấy file .env tại /home/isql-aigile/Scrum-Axon-Algile. Hãy đảm bảo file .env đã tồn tại trên VM."
             exit 1
           fi
 
