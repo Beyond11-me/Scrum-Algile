@@ -4,6 +4,7 @@ import asyncio
 import os
 import sys
 import unittest
+from unittest.mock import patch
 
 import httpx
 from sqlalchemy import create_engine, func
@@ -144,6 +145,15 @@ class TestAccountApi(unittest.TestCase):
 
     def setUp(self):
         self.db = SessionLocal()
+        self.sent_passwords = {}
+        for target, replacement in (
+            ("app.routers.admin_users.smtp_configured", lambda: True),
+            ("app.routers.admin_users.send_initial_password", lambda email, password: self.sent_passwords.update({email: password})),
+            ("app.services.account_import.send_initial_password", lambda email, password: self.sent_passwords.update({email: password})),
+        ):
+            patcher = patch(target, side_effect=replacement)
+            patcher.start()
+            self.addCleanup(patcher.stop)
         seed_rbac_catalogue(self.db)
         self.db.commit()
         self.created_emails = []
@@ -211,7 +221,7 @@ class TestAccountApi(unittest.TestCase):
 
         short = self.request(
             "POST", "/api/admin/users", headers=self.auth(self.admin_token),
-            json={"name": "Short Pass", "email": f"{self.prefix}-short@example.com", "role": "Student", "password": "1234567"},
+            json={"name": "Short Pass", "email": f"{self.prefix}-short@example.com", "role": "Admin", "password": "1234567"},
         )
         self.assertEqual(short.status_code, 400)
 
@@ -228,7 +238,9 @@ class TestAccountApi(unittest.TestCase):
         )
         self.assertEqual(created.status_code, 200, created.text)
         body = created.json()
-        self.assertEqual(body["password"], "password123")
+        self.assertEqual(body["password"], self.sent_passwords[email])
+        self.assertEqual(body["emailDelivery"], "sent")
+        self.assertTrue(self.db.query(User).filter(User.email == email).one().first_login_pending)
         self.assertNotIn("hashed_password", body)
         self.assertEqual(body["status"], "Active")
         self.created_emails.append(email.lower())
@@ -341,10 +353,16 @@ class TestAccountApi(unittest.TestCase):
         self.assertIn("26520598", payload["reportCsv"])
         stored = self.db.query(User).filter(User.email == email).one()
         self.assertEqual(stored.name, f"{self.prefix}-26520598")
-        password = [line.split(",")[4] for line in payload["reportCsv"].splitlines() if line.startswith(email)][0]
+        password = self.sent_passwords[email]
+        self.assertIn("Credentials emailed", payload["reportCsv"])
         login = self.request("POST", "/api/auth/login", json={"email": email, "password": password})
         self.assertEqual(login.status_code, 200, login.text)
+        self.assertTrue(login.json()["user"]["first_login_pending"])
         token = login.json()["access_token"]
+
+        dismissed = self.request("POST", "/api/auth/first-login/dismiss", headers=self.auth(token))
+        self.assertEqual(dismissed.status_code, 200, dismissed.text)
+        self.assertFalse(dismissed.json()["first_login_pending"])
 
         renamed = self.request(
             "PATCH", "/api/auth/profile", headers=self.auth(token),

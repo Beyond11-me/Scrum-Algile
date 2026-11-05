@@ -1,4 +1,5 @@
 from datetime import datetime
+import smtplib
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -27,6 +28,7 @@ from app.services.account_policy import (
     validate_person_name,
 )
 from app.services.account_removal import purge_account
+from app.services.account_mail import send_initial_password, smtp_configured
 from app.services.authorization import require_permission
 from app.services.rbac import assign_user_role
 
@@ -49,6 +51,7 @@ class AdminUserResponse(BaseModel):
     joined: str
     detail: str = ""
     password: str = ""
+    email_delivery: Optional[str] = Field(default=None, alias="emailDelivery")
 
 
 class AdminUserCreate(BaseModel):
@@ -152,13 +155,18 @@ def create_admin_user(
     except ValueError as exc:
         problems["role"] = str(exc)
         role = ""
-    try:
-        password = validate_admin_password(user_create.password or "")
-    except ValueError as exc:
-        problems["password"] = str(exc)
-        password = ""
+    if role in {"student", "instructor"}:
+        password = generate_password()
+    else:
+        try:
+            password = validate_admin_password(user_create.password or "")
+        except ValueError as exc:
+            problems["password"] = str(exc)
+            password = ""
     if problems:
         raise HTTPException(status_code=400, detail=problems)
+    if role in {"student", "instructor"} and not smtp_configured():
+        raise HTTPException(status_code=503, detail="SMTP is not configured for account invitations.")
     if _find_email(db, email):
         raise HTTPException(status_code=400, detail={"email": email_taken_message(email)})
 
@@ -171,6 +179,7 @@ def create_admin_user(
         last_active=datetime.utcnow(),
     )
     apply_password(new_user, password)
+    new_user.first_login_pending = role in {"student", "instructor"}
     db.add(new_user)
     assign_user_role(db, new_user, role)
     db.add(ActivityLog(user_id=admin_user.id, action=f"Created {display_role(role)} account for {email}"))
@@ -180,7 +189,14 @@ def create_admin_user(
         db.rollback()
         raise HTTPException(status_code=400, detail={"email": email_taken_message(email)})
     db.refresh(new_user)
-    return _user_response(new_user)
+    response = _user_response(new_user)
+    if role in {"student", "instructor"}:
+        try:
+            send_initial_password(email, password)
+            response.email_delivery = "sent"
+        except (OSError, RuntimeError, smtplib.SMTPException):
+            response.email_delivery = "failed"
+    return response
 
 
 @router.post("/import", response_model=AccountImportResponse)
@@ -190,6 +206,8 @@ async def import_admin_users(
     admin_user: User = Depends(require_admin),
 ):
     raw = await file.read()
+    if not smtp_configured():
+        raise HTTPException(status_code=503, detail="SMTP is not configured for account invitations.")
     if len(raw) > 1_000_000:
         raise HTTPException(status_code=400, detail="The CSV file is too large.")
     try:

@@ -15,6 +15,7 @@ class UserBase(BaseModel):
 
 class UserResponse(UserBase):
     id: str
+    first_login_pending: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

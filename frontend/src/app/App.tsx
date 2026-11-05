@@ -18,6 +18,8 @@ import { AssignmentWorkPage } from "../pages/student/AssignmentWorkPage";
 import { AssignmentDetailPage } from "../pages/student/AssignmentDetailPage";
 import { SubmissionsPage } from "../pages/student/SubmissionsPage";
 import { Loading } from "../components/ui";
+import { Dialog } from "../components/ui";
+import { authService } from "../services/authService";
 import { ProblemEditorPage } from "../pages/teacher/ProblemEditorPage";
 import { ProblemLibraryPage, AssignmentsListPage } from "../pages/teacher/TeacherLandingPages";
 import { AssignmentBuilderPage } from "../pages/teacher/BuilderPages";
@@ -85,7 +87,7 @@ export function App() {
   useEffect(() => {
     document.title = APP_NAME;
   }, []);
-  const { session } = useAuth();
+  const { session, updateSession } = useAuth();
   const home =
     session?.role === "admin"
       ? "/admin/users"
@@ -169,6 +171,15 @@ export function App() {
           element={<Navigate replace to={session ? home : "/login"} />}
         />
       </Routes>
+      {session?.firstLoginPending && (
+        <Dialog title="Your account is ready" onClose={() => {}} closeOnBackdrop={false} closeOnCancel={false} hideClose>
+          <p>You're using a temporary password. Would you like to change it now?</p>
+          <div className="teacher-page-actions">
+            <button className="button" type="button" onClick={async () => updateSession(await authService.dismissFirstLoginPrompt())}>Later</button>
+            <button className="button primary" type="button" onClick={async () => { updateSession(await authService.dismissFirstLoginPrompt()); window.location.assign(session.role === "admin" ? "/admin/account" : session.role === "instructor" ? "/teacher/account" : "/account"); }}>Change password</button>
+          </div>
+        </Dialog>
+      )}
     </>
   );
 }

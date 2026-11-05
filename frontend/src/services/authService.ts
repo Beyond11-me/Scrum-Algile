@@ -8,6 +8,7 @@ export type StudentSession = {
   initials: string;
   email: string;
   role: AppRole;
+  firstLoginPending?: boolean;
 };
 
 export const SESSION_KEY = "sql-practice:session:v1";
@@ -30,7 +31,8 @@ function normalizeSession(value: unknown): StudentSession | null {
   const user = value as Partial<StudentSession>;
   const role = normalizeRole(user.role);
   if (!role || !user.id || !user.name || !user.initials || !user.email) return null;
-  return { id: user.id, name: user.name, initials: user.initials, email: user.email, role };
+  return { id: user.id, name: user.name, initials: user.initials, email: user.email, role,
+    firstLoginPending: Boolean(user.firstLoginPending ?? (user as Partial<StudentSession> & {first_login_pending?: boolean}).first_login_pending) };
 }
 
 export const authService = {
@@ -47,6 +49,13 @@ export const authService = {
   async demoLogin() {
     const data = await apiFetch("/api/auth/demo", { method: "POST" });
     return persist(data.user, data.access_token);
+  },
+
+  async dismissFirstLoginPrompt() {
+    const user = await apiFetch("/api/auth/first-login/dismiss", { method: "POST" });
+    const token = storage.get(TOKEN_KEY);
+    if (!token) throw new Error("Sign in again before continuing.");
+    return persist(user, token);
   },
   
   async getProfile(): Promise<StudentSession & { nextProfileChangeAt: string | null }> {

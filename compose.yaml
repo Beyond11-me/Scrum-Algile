@@ -44,6 +44,18 @@ services:
       DATABASE_URL: mssql+pyodbc://sa:${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}@db:1433/SQLUIT?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=yes
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      Email__SmtpHost: ${Email__SmtpHost:-}
+      Email__SmtpPort: ${Email__SmtpPort:-}
+      Email__Security: ${Email__Security:-StartTls}
+      Email__Username: ${Email__Username:-}
+      Email__AppPassword: ${Email__AppPassword:-}
+      Email__FromAddress: ${Email__FromAddress:-}
+      Email__FromName: ${Email__FromName:-iSQL}
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     volumes:
