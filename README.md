@@ -40,6 +40,7 @@ An AI assistant (Google Gemini) is also available to students inside the problem
 | AI | Google Gemini (`google-genai`) |
 | DevOps | Docker, Docker Compose, Nginx, GitHub Actions, Microsoft Azure |
 | Project management | Notion (backlog, sprints), GitHub |
+| Team automation | Mastra, TypeScript, GitHub Actions |
 
 ## 4. System Architecture
 
@@ -107,6 +108,8 @@ Result comparison rules:
 │       ├── components/
 │       ├── services/     # API calls
 │       └── context/      # Auth, Theme
+├── automation/           # AI Manager (Mastra workflow for the team)
+├── .ai/prompts/          # Shared prompts for AI coding tools
 ├── docs/                 # Azure CI/CD guide
 ├── scripts/ci/           # Docker Compose smoke test
 ├── .github/workflows/    # GitHub Actions
@@ -172,6 +175,23 @@ To run the backend and frontend directly on your machine (without Docker):
 | `backend-ci.yml` | Pull requests and pushes (except `production`) | Unit tests, workflow lint, full stack run with Docker Compose against a real SQL Server |
 | `publish.yml` | Push to `production` | Re-runs both CI workflows, pushes the tested backend image to Azure Container Registry |
 | `deploy.yml` | Called by `publish.yml` | Deploys the backend to App Service and the frontend to Static Web Apps |
+| `ai-manager.yml` | Weekday schedule (manual run optional) | Publishes the team's AI Manager brief to Notion; does not deploy anything |
 
 Publishing and deployment are disabled until `ENABLE_AZURE_DEPLOYMENT` is turned on. GitHub Actions authenticates to Azure via OIDC. See [docs/azure-ci-cd.md](docs/azure-ci-cd.md) for the full setup.
 
+
+## 9. Team Workflow
+
+Scrum Team AIgile uses an AI Manager on top of this repository and the Notion backlog:
+
+```mermaid
+flowchart LR
+    M[AI Manager<br/>reads Notion and GitHub] --> B[Brief on Notion]
+    B --> H[PO and Scrum Master<br/>decide]
+    H --> D[Developer + AI tool<br/>plan, code, check]
+    D --> PR[Pull Request<br/>human review]
+    PR --> N[Board updated]
+    N -.-> M
+```
+
+The AI Manager only suggests; people make every decision and merge every change. See [automation/README.md](automation/README.md) for its architecture and setup. Developers start from [AGENTS.md](AGENTS.md) and the prompts in [.ai/prompts/](.ai/prompts/).
