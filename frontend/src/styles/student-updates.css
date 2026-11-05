@@ -1141,17 +1141,11 @@ body:has(.practice-page) {
   margin-right: auto;
   white-space: nowrap;
 }
-.editor-expanded .workspace-layout {
-  grid-template-columns: minmax(0, 1fr);
-}
 .editor-expanded .problem-pane,
 .editor-expanded .result-pane,
 .editor-expanded .workspace-splitter,
 .editor-expanded .workspace-ai-region {
   display: none;
-}
-.editor-expanded .editor-results {
-  grid-template-rows: minmax(0, 1fr);
 }
 @media (max-width: 760px) {
   .account-trigger .avatar {
@@ -1572,7 +1566,6 @@ body:has(.assignment-work-page), body:has(.scope-detail-page) { background: var(
 .dialog.submission-drawer { display:flex; flex-direction:column; overflow:hidden; }
 .submission-drawer > .section-heading { flex:none; }
 .submission-detail-content { flex:1; min-height:0; overflow:auto; }
-.submission-detail-id { margin-bottom:8px; }
 .submission-evaluation { margin:24px 0; }
 .submission-verdict { display:flex; align-items:center; gap:12px; margin:0 0 10px; padding:14px 16px; }
 .submission-verdict p { margin:0; }

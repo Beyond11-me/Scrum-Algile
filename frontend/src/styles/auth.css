@@ -8,3 +8,14 @@
   .auth-page--centered .auth-form-panel { padding: 24px 16px; }
   .auth-page--centered .auth-form-wrap { padding: 24px 20px; }
 }
+/* Shared password controls and live requirement indicators. */
+.password-input { width:100%; min-width:0; }
+:is(.admin-field,.field) .password-input input { width:100%; padding-right:44px; }
+.password-input .password-visibility, .password-visibility { display:grid; place-items:center; width:36px; padding:0; border:0; border-radius:var(--radius-sm); background:transparent; color:var(--muted); }
+.password-input .password-visibility:hover, .password-visibility:hover { color:var(--accent); }
+.password-input .password-visibility:focus-visible, .password-visibility:focus-visible { outline-offset:-2px; }
+.password-checklist { display:grid; gap:6px; margin:8px 0 0; padding:0; list-style:none; color:var(--muted); font-size:11px; line-height:16px; }
+.password-checklist li { display:flex; align-items:flex-start; gap:8px; }
+.password-checklist li svg { flex:none; margin-top:1px; }
+.password-checklist li.is-met { color:var(--success); }
+.account-secret .password-visibility { position:static; width:28px; height:28px; }

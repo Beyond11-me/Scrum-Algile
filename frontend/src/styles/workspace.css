@@ -34,6 +34,8 @@
 .workspace .workspace-main { background: var(--canvas); padding: 8px; box-sizing: border-box; }
 .workspace .workspace-layout { grid-template-columns: minmax(0, var(--problem-pane-width, 38%)) 8px minmax(0, 1fr) auto; }
 .workspace .editor-results { grid-template-rows: minmax(0, var(--editor-pane-height, 62%)) 8px minmax(0, 1fr); }
+.workspace.editor-expanded .workspace-layout { grid-template-columns: minmax(0, 1fr); }
+.workspace.editor-expanded .editor-results { grid-template-rows: minmax(0, 1fr); }
 .workspace .problem-pane,
 .workspace .result-pane { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
 .workspace .editor-pane { background: var(--editor-bg); border-radius: var(--radius-lg); overflow: hidden; }

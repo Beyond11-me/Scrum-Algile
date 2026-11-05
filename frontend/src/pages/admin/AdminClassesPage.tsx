@@ -1,6 +1,9 @@
+import { SelectMenu } from "../../components/SelectMenu";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Eye, EyeOff, Search } from "lucide-react";
+import { PasswordChecklist, PasswordInput } from "../../components/PasswordInput";
+import { passwordRequirements } from "../../utils/passwordRequirements";
 import { Dialog, Empty, ErrorState, Loading } from "../../components/ui";
 import { AdminOnlyButton } from "../../components/withRoleAccess";
 import { useAuth } from "../../context/AuthContext";
@@ -71,7 +74,6 @@ function AddUserDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (user: 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<AdminUser["role"]>("Student");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
@@ -82,8 +84,7 @@ function AddUserDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (user: 
     const cleanEmail = email.trim().toLowerCase();
     if (!PERSON_NAME.test(cleanName)) next.name = "Use 2–100 letters and spaces, with no accents or digits.";
     if (!cleanEmail || cleanEmail.length > 255 || !ACCOUNT_EMAIL.test(cleanEmail)) next.email = "Enter a valid email address.";
-    if (password.length < 8) next.password = "Password must be at least 8 characters.";
-    if (password.length > 64) next.password = "Password must be at most 64 characters.";
+    if (!passwordRequirements(password, "admin")[0].met) next.password = "Use 8–64 characters.";
     setErrors(next);
     if (Object.keys(next).length) return;
     setLoading(true);
@@ -101,8 +102,9 @@ function AddUserDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (user: 
   return <Dialog title="Add user" onClose={onClose} className="admin-dialog"><form onSubmit={submit} className="admin-dialog-form" noValidate>
     <Field label="NAME"><input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Nguyen Van An" maxLength={100} aria-invalid={!!errors.name} />{errors.name && <small className="field-error">{errors.name}</small>}</Field>
     <Field label="EMAIL"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.edu" maxLength={255} aria-invalid={!!errors.email} />{errors.email && <small className="field-error">{errors.email}</small>}</Field>
-    <Field label="PASSWORD"><input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" maxLength={64} aria-invalid={!!errors.password} />{errors.password && <small className="field-error">{errors.password}</small>}<button type="button" className="text-button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide password" : "Show password"}</button></Field>
-    <Field label="ROLE"><select value={role} onChange={(e) => setRole(e.target.value as AdminUser["role"])}><option>Student</option><option>Lecturer</option><option>Admin</option></select></Field>
+    <Field label="PASSWORD"><PasswordInput label="password" value={password} onChange={(e) => { setPassword(e.target.value); setErrors((previous) => ({ ...previous, password: "" })); }} placeholder="At least 8 characters" maxLength={64} autoComplete="new-password" aria-invalid={!!errors.password} aria-describedby="add-user-password-requirements" />{errors.password && <small className="field-error">{errors.password}</small>}</Field>
+    <PasswordChecklist id="add-user-password-requirements" password={password} policy="admin" />
+    <Field label="ROLE"><SelectMenu value={role} onChange={(e) => setRole(e.target.value as AdminUser["role"])}><option>Student</option><option>Lecturer</option><option>Admin</option></SelectMenu></Field>
     {errors.form && <p className="admin-warning" style={{ margin: 0 }}>{errors.form}</p>}
     <div className="admin-dialog-actions"><button type="button" className="button" onClick={onClose} disabled={loading}>Cancel</button><button className="button primary" disabled={loading}>{loading ? "Adding..." : "Add user"}</button></div>
   </form></Dialog>;
@@ -111,7 +113,6 @@ function AddUserDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (user: 
 function ResetPasswordDialog({ email, name, onClose }: { email: string; name: string; onClose: (notice?: string, password?: string) => void }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [generated, setGenerated] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -134,8 +135,7 @@ function ResetPasswordDialog({ email, name, onClose }: { email: string; name: st
   async function submit(event: FormEvent) {
     event.preventDefault();
     const next: Record<string, string> = {};
-    if (password.length < 8) next.password = "Password must be at least 8 characters.";
-    if (password.length > 64) next.password = "Password must be at most 64 characters.";
+    if (!passwordRequirements(password, "admin")[0].met) next.password = "Use 8–64 characters.";
     if (password !== confirm) next.confirm = "Passwords must match.";
     setErrors(next);
     if (Object.keys(next).length) return;
@@ -157,8 +157,9 @@ function ResetPasswordDialog({ email, name, onClose }: { email: string; name: st
       <div className="admin-dialog-actions"><button type="button" className="button primary" onClick={() => onClose(`Password reset for ${name}.`, generated)}>Close</button></div>
     </div> : <form onSubmit={submit} className="admin-dialog-form" noValidate>
       <p className="admin-muted">{name} · {email}</p>
-      <Field label="NEW PASSWORD"><input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} maxLength={64} aria-invalid={!!errors.password} />{errors.password && <small className="field-error">{errors.password}</small>}<button type="button" className="text-button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide password" : "Show password"}</button></Field>
-      <Field label="CONFIRM PASSWORD"><input type={showPassword ? "text" : "password"} value={confirm} onChange={(event) => setConfirm(event.target.value)} maxLength={64} aria-invalid={!!errors.confirm} />{errors.confirm && <small className="field-error">{errors.confirm}</small>}</Field>
+      <Field label="NEW PASSWORD"><PasswordInput label="new password" value={password} onChange={(event) => { setPassword(event.target.value); setErrors((previous) => ({ ...previous, password: "", confirm: "" })); }} maxLength={64} autoComplete="new-password" aria-invalid={!!errors.password} aria-describedby="reset-password-requirements" />{errors.password && <small className="field-error">{errors.password}</small>}</Field>
+      <Field label="CONFIRM PASSWORD"><PasswordInput label="confirm password" value={confirm} onChange={(event) => { setConfirm(event.target.value); setErrors((previous) => ({ ...previous, confirm: "" })); }} maxLength={64} autoComplete="new-password" aria-invalid={!!errors.confirm} aria-describedby="reset-password-requirements" />{errors.confirm && <small className="field-error">{errors.confirm}</small>}</Field>
+      <PasswordChecklist id="reset-password-requirements" password={password} policy="admin" confirm={confirm} />
       {errors.form && <p className="admin-warning" style={{ margin: 0 }}>{errors.form}</p>}
       <div className="admin-dialog-actions"><button type="button" className="button" onClick={generate} disabled={busy}>Generate password</button><button className="button primary" disabled={busy}>{busy ? "Saving..." : "Reset password"}</button></div>
     </form>}
@@ -345,8 +346,8 @@ export function AdminUsersPage() {
       </div>
       <div className="admin-user-filters">
         <Field label="SEARCH"><input value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} placeholder="Search name or email..." /></Field>
-        <Field label="ROLE"><select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}><option>All roles</option><option>Student</option><option>Lecturer</option><option>Admin</option></select></Field>
-        <Field label="STATUS"><select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}><option>Active</option><option>All statuses</option><option>Inactive</option></select></Field>
+        <Field label="ROLE"><SelectMenu value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}><option>All roles</option><option>Student</option><option>Lecturer</option><option>Admin</option></SelectMenu></Field>
+        <Field label="STATUS"><SelectMenu value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}><option>Active</option><option>All statuses</option><option>Inactive</option></SelectMenu></Field>
       </div>
     </div>
     {notice && <Notice>{notice}</Notice>}
@@ -370,7 +371,7 @@ export function AdminUsersPage() {
       </div>
     </>} side={selected ? <>
       <div className="admin-compact-panel-header"><h2>Account details</h2><button type="button" className="text-button compact-panel-back" onClick={() => setShowUserDetails(false)}>Back to users</button></div><h3 className="admin-detail-title"><Link className="title-link" to={`/admin/users/${encodeURIComponent(selected.email)}/edit`}>{selected.name}</Link></h3><p className="admin-muted">{selected.email}</p><div className="admin-detail-divider" />
-      <Field label="ROLE"><select value={pendingRole ?? selected.role} disabled={ownAccount} onChange={(e) => setPendingRole(e.target.value)}><option>Student</option><option>Lecturer</option><option>Admin</option></select></Field>
+      <Field label="ROLE"><SelectMenu value={pendingRole ?? selected.role} disabled={ownAccount} onChange={(e) => setPendingRole(e.target.value)}><option>Student</option><option>Lecturer</option><option>Admin</option></SelectMenu></Field>
       {ownAccount && <p className="admin-muted">You cannot change your own role here.</p>}
       {pendingRole && pendingRole !== selected.role && !ownAccount && (
         <button className="button primary admin-button" style={{ marginBottom: "1rem" }} onClick={() => { handleUpdateRole(selected, pendingRole); setPendingRole(null); }}>Save role</button>
@@ -471,11 +472,11 @@ export function AdminEditAccountPage() {
         <div className="admin-account-fields">
           <Field label="FULL NAME"><input value={name} onChange={(event) => setName(event.target.value)} maxLength={100} aria-invalid={!!errors.name} />{errors.name && <small className="field-error">{errors.name}</small>}</Field>
           <Field label="EMAIL ADDRESS"><input type="email" value={accountEmail} onChange={(event) => setAccountEmail(event.target.value)} maxLength={255} aria-invalid={!!errors.email} />{errors.email && <small className="field-error">{errors.email}</small>}</Field>
-          <Field label="ROLE"><select value={role} disabled={currentUser.email.toLowerCase() === session?.email.toLowerCase()} onChange={(event) => setRole(event.target.value as AdminUser["role"])}><option>Student</option><option>Lecturer</option><option>Admin</option></select></Field>
-          <Field label="ACCOUNT STATUS"><select value={status} disabled={currentUser.email.toLowerCase() === session?.email.toLowerCase()} onChange={(event) => setStatus(event.target.value as AdminUser["status"])}><option>Active</option><option>Inactive</option></select></Field>
+          <Field label="ROLE"><SelectMenu value={role} disabled={currentUser.email.toLowerCase() === session?.email.toLowerCase()} onChange={(event) => setRole(event.target.value as AdminUser["role"])}><option>Student</option><option>Lecturer</option><option>Admin</option></SelectMenu></Field>
+          <Field label="ACCOUNT STATUS"><SelectMenu value={status} disabled={currentUser.email.toLowerCase() === session?.email.toLowerCase()} onChange={(event) => setStatus(event.target.value as AdminUser["status"])}><option>Active</option><option>Inactive</option></SelectMenu></Field>
         </div>
         <div className="account-secret">
-          <div><span>Password</span><button type="button" className="text-button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide" : "Show"}</button></div>
+          <div><span>Password</span><button type="button" className="password-visibility" aria-label={showPassword ? "Hide password" : "Show password"} title={showPassword ? "Hide password" : "Show password"} disabled={!currentUser.password} onClick={() => setShowPassword((value) => !value)}>{showPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}</button></div>
           <code>{passwordText(currentUser.password, showPassword)}</code>
           {!currentUser.password && <small>No password on file. Use Reset password to set one.</small>}
         </div>
@@ -543,12 +544,12 @@ function CourseDialog({ onClose, onCreate, error, busy }: { onClose: () => void;
 
         <label className="teacher-field">
           <span>TERM</span>
-          <select required value={newClassForm.term} onChange={e => setNewClassForm({ ...newClassForm, term: e.target.value })}>
+          <SelectMenu required value={newClassForm.term} onChange={e => setNewClassForm({ ...newClassForm, term: e.target.value })}>
             <option value="" disabled>Select a term...</option>
             {academicTerms().map(t => (
               <option key={t} value={t}>{t}</option>
             ))}
-          </select>
+          </SelectMenu>
         </label>
 
         <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
@@ -644,7 +645,7 @@ export function AdminCoursesPage() {
     <div className="admin-course-filter-row">
       <Field label="SEARCH"><input value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} placeholder="Search course or class..." /></Field>
       <div className="admin-course-options">
-        <Field label="SEMESTER"><select value={semester} onChange={(event) => { setSemester(event.target.value); setPage(1); }}><option>All semesters</option>{semesters.map((term) => <option key={term}>{term}</option>)}</select></Field>
+        <Field label="SEMESTER"><SelectMenu value={semester} onChange={(event) => { setSemester(event.target.value); setPage(1); }}><option>All semesters</option>{semesters.map((term) => <option key={term}>{term}</option>)}</SelectMenu></Field>
         <button className="button primary admin-button" onClick={() => { setCreateError(""); setDialog(true); }}>Add class</button>
       </div>
     </div>
@@ -732,7 +733,7 @@ export function AdminCoursesPage() {
         </p>
         <div className="admin-detail-divider" />
         <Field label="SEMESTER">
-          <select value={selected.semester} onChange={async (event) => {
+          <SelectMenu value={selected.semester} onChange={async (event) => {
             const newSemester = event.target.value;
             try {
               const res = await adminService.updateClass(selected.id, { semester: newSemester });
@@ -745,7 +746,7 @@ export function AdminCoursesPage() {
             {academicTerms(selected.semester).map((term) => (
               <option key={term} value={term}>{term}</option>
             ))}
-          </select>
+          </SelectMenu>
         </Field>
         <Field label="CLASS DATES">
           <input readOnly value={formatClassDateRange(selected.startDate, selected.endDate)} />
@@ -869,11 +870,11 @@ export function AdminEditClassPage() {
         <h2>{currentRecord.id} · Class details</h2>
         <Field label="CLASS ID"><input value={currentRecord.id} readOnly /><small className="admin-muted">Class IDs stay fixed so existing student work keeps its link.</small></Field>
         <Field label="COURSE"><input value={course} onChange={(event) => setCourse(event.target.value)} /></Field>
-        <Field label="SEMESTER"><select value={semester} onChange={(event) => setSemester(event.target.value)}>
+        <Field label="SEMESTER"><SelectMenu value={semester} onChange={(event) => setSemester(event.target.value)}>
           {academicTerms(semester).map(t => (
             <option key={t} value={t}>{t}</option>
           ))}
-        </select></Field>
+        </SelectMenu></Field>
         <LecturerSlot
           lecturer={findLecturer(lecturers, lecturer, lecturer === currentRecord.lecturerId ? currentRecord.lecturer : undefined)}
           changeLabel={choosingLecturer ? "Close" : "Change"}
@@ -896,7 +897,7 @@ export function AdminEditClassPage() {
             ) : null}
           />
         </div>}
-        <Field label="CLASS STATUS"><select value={status} onChange={(event) => setStatus(event.target.value as AdminClass["status"])}><option>Draft</option><option>Active</option><option>Archived</option></select></Field>
+        <Field label="CLASS STATUS"><SelectMenu value={status} onChange={(event) => setStatus(event.target.value as AdminClass["status"])}><option>Draft</option><option>Active</option><option>Archived</option></SelectMenu></Field>
         {notice && <Notice>{notice}</Notice>}
         <div className="admin-class-form-bottom">
           <div>
@@ -992,7 +993,7 @@ export function AdminLecturersPage() {
     </PageIntro>{notice && <Notice>{notice}</Notice>}
     {loading ? <Loading label="Loading classes and lecturers…" /> : loadError ? <p className="admin-notice" role="alert">{loadError}</p> : assignments.length === 0 ? <p className="admin-muted">No classes are available for lecturer assignment.</p> :
       <Split main={<div className="admin-table-wrap sticky-list-table-wrap"><table className="admin-table sticky-list-table admin-lecturer-table"><thead><tr><th>CLASS</th><th>CURRENT LECTURER</th><th>STATUS</th></tr></thead><tbody>{assignments.map((item) => <tr key={item.id} className={item.id === selectedId ? "is-selected" : ""} onClick={() => { setSelectedId(item.id); setLecturer(item.lecturerId || "Unassigned"); }}><td data-label="CLASS"><b>{item.id}</b></td><td data-label="CURRENT LECTURER" className={item.lecturer === "Unassigned" ? "admin-warning" : ""}>{item.lecturer}</td><td data-label="STATUS">{item.lecturer === "Unassigned" ? "Needs lecturer" : "Assigned"}</td></tr>)}</tbody></table></div>} side={selected ? <>
-        <h2>Assign {selected.id}</h2><p className="admin-muted">{selected.course.split(" · ")[1] || selected.course} · {selected.semester} · {selected.students} student{selected.students === 1 ? "" : "s"}</p><Field label="LECTURER"><select value={lecturer} onChange={(e) => setLecturer(e.target.value)}><option value="Unassigned">Unassigned</option>{lecturers.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select></Field><div className="admin-detail-divider" /><h3 className="admin-subheading">Access preview</h3><p className="admin-muted">The selected lecturer can manage assignments, view class results and review submissions after assignment is saved.</p>
+        <h2>Assign {selected.id}</h2><p className="admin-muted">{selected.course.split(" · ")[1] || selected.course} · {selected.semester} · {selected.students} student{selected.students === 1 ? "" : "s"}</p><Field label="LECTURER"><SelectMenu value={lecturer} onChange={(e) => setLecturer(e.target.value)}><option value="Unassigned">Unassigned</option>{lecturers.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</SelectMenu></Field><div className="admin-detail-divider" /><h3 className="admin-subheading">Access preview</h3><p className="admin-muted">The selected lecturer can manage assignments, view class results and review submissions after assignment is saved.</p>
       </> : <h2>No class selected</h2>} />}
   </div>;
 }
@@ -1114,10 +1115,10 @@ export function AdminPracticeCatalogPage() {
     <div className="admin-practice-filters admin-practice-topic-filters">
       <div className="admin-practice-main-filters">
         <Field label="SEARCH"><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Search title..." /></Field>
-        <Field label="TOPIC"><select value={topic} onChange={event => { setTopic(event.target.value); setPage(1); }}><option value="">All topics</option>{computedTopics.map(item => <option key={item.name} value={item.name}>{item.name} ({item.problems})</option>)}</select></Field>
-        <Field label="DIFFICULTY"><select value={difficulty} onChange={(event) => { setDifficulty(event.target.value); setPage(1); }}><option>All levels</option><option>Easy</option><option>Medium</option><option>Hard</option></select></Field>
+        <Field label="TOPIC"><SelectMenu value={topic} onChange={event => { setTopic(event.target.value); setPage(1); }}><option value="">All topics</option>{computedTopics.map(item => <option key={item.name} value={item.name}>{item.name} ({item.problems})</option>)}</SelectMenu></Field>
+        <Field label="DIFFICULTY"><SelectMenu value={difficulty} onChange={(event) => { setDifficulty(event.target.value); setPage(1); }}><option>All levels</option><option>Easy</option><option>Medium</option><option>Hard</option></SelectMenu></Field>
       </div>
-      <Field label="VISIBILITY"><select value={visibility} onChange={(event) => { setVisibility(event.target.value); setPage(1); }}><option>All</option><option>Visible</option><option>Hidden</option></select></Field>
+      <Field label="VISIBILITY"><SelectMenu value={visibility} onChange={(event) => { setVisibility(event.target.value); setPage(1); }}><option>All</option><option>Visible</option><option>Hidden</option></SelectMenu></Field>
     </div>
     <Split className="admin-practice-split" main={<><div className="admin-table-wrap compact-table-scroll" role="region" aria-label="Practice problems table" tabIndex={0}><table className="admin-table admin-practice-table"><thead><tr><th>PROBLEM</th><th>TOPICS</th><th>DIFFICULTY</th><th>SOLVED BY</th><th>STATUS</th></tr></thead><tbody>
       {pageProblems.map((problem) => <tr key={problem.id} className={problem.id === selected?.id ? "is-selected" : ""} onClick={() => { setSelectedId(problem.id); setShowPracticeDetails(true); }}>
@@ -1231,7 +1232,7 @@ function OverviewUnassignedClassesPanel({ onClose }: { onClose: () => void }) {
   return <div className="admin-overview-details">
     <div className="admin-overview-panel-header"><h2>Classes without a lecturer</h2><button type="button" className="text-button" onClick={onClose}>Close</button></div>
     {loading ? <Loading label="Loading classes…" /> : error ? <><p className="admin-warning" role="alert">{error}</p><button type="button" className="button admin-button" onClick={() => void loadClasses()}>Retry</button></> : selected ? <>
-      <Field label={"UNASSIGNED CLASSES (" + classes.length + ")"}><select value={selected.id} onChange={event => setSelectedId(event.target.value)}>{classes.map(item => <option key={item.id} value={item.id}>{item.id} · {item.course}</option>)}</select></Field>
+      <Field label={"UNASSIGNED CLASSES (" + classes.length + ")"}><SelectMenu value={selected.id} onChange={event => setSelectedId(event.target.value)}>{classes.map(item => <option key={item.id} value={item.id}>{item.id} · {item.course}</option>)}</SelectMenu></Field>
       <div className="admin-detail-divider" />
       <h3 className="admin-detail-title"><Link className="title-link" to={`/admin/courses/classes/${encodeURIComponent(selected.id)}/edit`}>{selected.id}</Link></h3>
       <dl className="teacher-list-detail-facts">
